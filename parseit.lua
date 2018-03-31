@@ -177,6 +177,12 @@ end
 -- Function to print ast to console. For debug use.
 -- from useparseit.lua, Glenn G. Chappell 2018
 function writeAST(x)
+    local symbolNames = {
+        "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
+        "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
+        "STRLIT_OUT", "BIN_OP", "UN_OP", "NUMLIT_VAL", "BOOLLIT_VAL",
+        "SIMPLE_VAR", "ARRAY_VAR"
+    }
     if type(x) == "number" then
         local name = symbolNames[x]
         if name == nil then
@@ -199,7 +205,7 @@ function writeAST(x)
             if not first then
                 print(", ")
             end
-            writeAST_parseit(x[k])
+            writeAST(x[k])
             first = false
         end
         print("}")
@@ -223,6 +229,7 @@ function parseit.parse(progstr)
     print('--- START ---')
     init(progstr) -- init parser
     local pvalid, ast = parse_program()  -- Parse start symbol
+    writeAST(ast)
     return pvalid, atEnd(), ast -- return results
 end
 
