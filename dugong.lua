@@ -66,6 +66,50 @@ function outputString(s)
 end
 
 
+-- ***** Debug functions *****
+
+-- Function to print ast to console. For debug use.
+-- Glenn G. Chappell, 2018
+function writeAST(x)
+    local symbolNames = {
+        "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
+        "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
+        "STRLIT_OUT", "BIN_OP", "UN_OP", "NUMLIT_VAL", "BOOLLIT_VAL",
+        "SIMPLE_VAR", "ARRAY_VAR"
+    }
+    if type(x) == "number" then
+        local name = symbolNames[x]
+        if name == nil then
+            print("<ERROR: Unknown constant: "..x..">")
+        else
+            print(name)
+        end
+    elseif type(x) == "string" then
+        print('"'..x..'"')
+    elseif type(x) == "boolean" then
+        if x then
+            print("true")
+        else
+            print("false")
+        end
+    elseif type(x) == "table" then
+        local first = true
+        print("{")
+        for k = 1, #x do  -- ipairs is problematic
+            -- if not first then
+            --     print(", ")
+            -- end
+            writeAST(x[k])
+            first = false
+        end
+        print("}")
+    elseif type(x) == "nil" then
+        print("nil")
+    else
+        print("<ERROR: "..type(x)..">")
+    end
+end
+
 -- ***** Functions for Dugong REPL *****
 
 
@@ -144,11 +188,14 @@ function runDugong(program, state, execmsg)
     local good, done, ast = parseit.parse(program)
     local newstate
     if good and done then
+        print('-- Parse OK.') -- Debug output
+        -- writeAST(ast) -- Debug output
         if execmsg ~= nil then
             io.write(execmsg.."\n")
         end
         newstate = interpit.interp(ast, state, inputLine, outputString)
     else
+        print('-- Parse Failed.') -- Debug output   
         newstate = state
     end
     return good, done, newstate

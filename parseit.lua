@@ -226,10 +226,10 @@ end
 -- reached the end of the input or not. AST is only valid if first
 -- boolean is true.
 function parseit.parse(progstr)
-    print('--- START ---')
+    print('-- Parsing...') -- Debug output
     init(progstr) -- init parser
     local pvalid, ast = parse_program()  -- Parse start symbol
-    writeAST(ast)
+    --writeAST(ast) -- Debug output
     return pvalid, atEnd(), ast -- return results
 end
 
@@ -472,7 +472,7 @@ function parse_statement()
         if pvalid and matchStr('=') then
             pvalid, ast1 = parse_expr()
             if pvalid then 
-                io.write('RT parse_statement(): ') writeAST({ASSN_STMT, ast, ast1})        
+                -- io.write('RT parse_statement(): ') writeAST({ASSN_STMT, ast, ast1})        
                 return true, {ASSN_STMT, ast, ast1}
             end
         end

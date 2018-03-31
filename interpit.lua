@@ -1,10 +1,8 @@
--- interpit.lua  INCOMPLETE
--- Glenn G. Chappell
--- 29 Mar 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Interpret AST from parseit.parse
--- For Assignment 6, Exercise B
+-- lexit.lua
+-- CSCE A3331, Assignment 6
+-- Dustin Fast
+-- Spring, 2018
+-- Adapted from interpit.lua, Glenn G. Chappell 2018
 
 
 -- *******************************************************************
@@ -16,7 +14,6 @@ local interpit = {}  -- Our module
 
 
 -- ***** Variables *****
-
 
 -- Symbolic Constants for AST
 
@@ -39,7 +36,6 @@ local ARRAY_VAR   = 16
 
 
 -- ***** Utility Functions *****
-
 
 -- numToInt
 -- Given a number, return the number rounded toward zero.
@@ -103,7 +99,48 @@ end
 --
 -- THIS FUNCTION IS INTENDED FOR USE IN DEBUGGING ONLY!
 -- IT SHOULD NOT BE CALLED IN THE FINAL VERSION OF THE CODE.
-function astToStr(x)
+function astToStr(ast)
+    local symbolNames = {
+        "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
+        "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
+        "STRLIT_OUT", "BIN_OP", "UN_OP", "NUMLIT_VAL", "BOOLLIT_VAL",
+        "SIMPLE_VAR", "ARRAY_VAR"
+    }
+    if type(ast) == "number" then
+        local name = symbolNames[ast]
+        if name == nil then
+            return "<Unknown numerical constant: "..ast..">"
+        else
+            return name
+        end
+    elseif type(ast) == "string" then
+        return '"'..ast..'"'
+    elseif type(ast) == "boolean" then
+        if ast then
+            return "true"
+        else
+            return "false"
+        end
+    elseif type(ast) == "table" then
+        local first = true
+        local result = "{"
+        for k = 1, #ast do
+            if not first then
+                result = result .. ","
+            end
+            result = result .. astToStr(ast[k])
+            first = false
+        end
+        result = result .. "}"
+        return result
+    elseif type(ast) == "nil" then
+        return "nil"
+    else
+        return "<"..type(ast)..">"
+    end
+end
+
+function writeAST(x)
     local symbolNames = {
         "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
         "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
@@ -113,34 +150,33 @@ function astToStr(x)
     if type(x) == "number" then
         local name = symbolNames[x]
         if name == nil then
-            return "<Unknown numerical constant: "..x..">"
+            print("<ERROR: Unknown constant: "..x..">")
         else
-            return name
+            print(name)
         end
     elseif type(x) == "string" then
-        return '"'..x..'"'
+        print('"'..x..'"')
     elseif type(x) == "boolean" then
         if x then
-            return "true"
+            print("true")
         else
-            return "false"
+            print("false")
         end
     elseif type(x) == "table" then
         local first = true
-        local result = "{"
-        for k = 1, #x do
-            if not first then
-                result = result .. ","
-            end
-            result = result .. astToStr(x[k])
+        print("{")
+        for k = 1, #x do  -- ipairs is problematic
+            -- if not first then
+            --     print(", ")
+            -- end
+            writeAST(x[k])
             first = false
         end
-        result = result .. "}"
-        return result
+        print("}")
     elseif type(x) == "nil" then
-        return "nil"
+        print("nil")
     else
-        return "<"..type(x)..">"
+        print("<ERROR: "..type(x)..">")
     end
 end
 
@@ -169,20 +205,21 @@ function interpit.interp(ast, state, incall, outcall)
     -- versions of state, incall, and outcall may be used. The
     -- function-wide version of state may be modified as appropriate.
 
-
+    
     function interp_stmt_list(ast)
-        print("*** STMT LIST: DUNNO WHAT TO DO!!!")
+        -- Parse AST
+
+        print("-- Processing AST: \n") -- Debug output
+        print(astToStr(ast))
     end
 
 
-    -- Body of function interp
+    -- interp function body
     interp_stmt_list(ast)
     return state
 end
 
 
 -- ***** Module Export *****
-
-
 return interpit
 
