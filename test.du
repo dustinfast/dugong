@@ -1,0 +1,4 @@
+#!./dugong.lua
+print cr
+nn = 3
+print nn; cr
