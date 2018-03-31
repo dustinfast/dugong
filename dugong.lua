@@ -284,9 +284,9 @@ clearState()
 -- source, and execute.
 if arg[1] ~= nil then
     runFile(arg[1], false)  -- false: Do not print execution message
-    io.write("\n")
-    io.write("Press ENTER to quit ")
-    io.read("*l")
+    -- io.write("\n")
+    -- io.write("Press ENTER to quit ")
+    -- io.read("*l")
 -- Otherwise, fire up the Dugong REPL.
 else
     repl()
