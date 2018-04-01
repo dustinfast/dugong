@@ -16,11 +16,14 @@ local interpit = {}  -- Our module
 -- ***** Variables *****
 
 -- Symbolic Constants for astParser
-local CONST = 1
-local BOOL = 2
-local STR = 3
+local ERROR = 1
+local CONST = 2
+local BOOL = 3
+local STR = 4
+local FUNC_AST = 5
+local FUNC_NAME = 6
 
-local parserNames = {'CONST', 'BOOL', 'STR'}
+local parserNames = {'ERROR', 'CONST', 'BOOL', 'STR', 'FUNC_AST', 'FUNC_NAME'}
 
 -- Symbolic Constants for AST
 local STMT_LIST   = 1
@@ -45,7 +48,6 @@ local symbolNames = {
     'CALL_FUNC', 'IF_STMT', 'WHILE_STMT', 'ASSN_STMT', 'CR_OUT',
     'STRLIT_OUT', 'BIN_OP', 'UN_OP', 'NUMLIT_VAL', 'BOOLLIT_VAL',
     'SIMPLE_VAR', 'ARRAY_VAR'}
-
 
 
 ----- Utility Functions -----
@@ -161,7 +163,7 @@ end
 
 
 -- parseAST_FUNC
--- A helper for parseAST. Yields a functions stmt list as an intact AST
+-- A helper for parseAST. Yields a FUNC_STMT's statment list as an intact AST
 local function parseAST_FUNC()
 
 end
@@ -177,16 +179,19 @@ end
 --              ERR, string     = An error in string form
 -- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
 --  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
+local funcFlag = false
 local function parseAST(node)
     -- If node is a symbolic constant, return number for that constant:
     if type(node) == 'number' then
         local name = symbolNames[node]
         if name == nil then
-            coroutine.yield('ERROR', 'Unknown constant: '..node)
+            coroutine.yield(ERROR, 'Unknown constant: '..node)
         else
-            -- if node == FUNC_STMT then
-            --     -- tield the STMT_LIST as an AST
-            -- end
+            if node == FUNC_STMT then
+                -- set funcFlag, so we return the next two
+                -- nodes as a FUNC_NAME and FUNC_AST
+                funcFlag = true
+            end
             coroutine.yield(CONST, node)
         end
         
@@ -204,17 +209,24 @@ local function parseAST(node)
     
     -- If node is a table, do recursive call to parse it:
     elseif type(node) == 'table' then
-        local first = true
-        for k = 1, #node do  -- Note: ipairs doesn't work here. Why?
-            parseAST(node[k])
-            first = false
+        for i = 1, #node do  
+            if funcFlag then
+                -- if funcFlag set, yield the next two
+                -- as a FUNC_NAME and FUNC_AST, because funcs
+                -- get their STMT_LIST as a whole, intact, ASt
+                coroutine.yield(FUNC_NAME, node[i])
+                coroutine.yield(FUNC_AST, node[i+1])
+                funcFlag = false
+                break
+            end
+            parseAST(node[i])
         end
     
     -- If node is empty or of an unexpected type:
     elseif type(node) == 'nil' then
-        coroutine.yield('ERROR', 'Empty tree or node encountered.')
+        --coroutine.yield(ERROR, 'Empty node encountered.')
     else
-        coroutine.yield('ERROR', 'Invalid type encountered: '..type(node))
+        coroutine.yield(ERROR, 'Invalid type encountered: '..type(node))
     end
 end
 
@@ -265,7 +277,6 @@ function interpit.interp(ast, state, incall, outcall)
     -- prints the current key/value in a conveient form. For debug.
     local function printDebugString()
         local key, val = nil
-        
         if currKey == nil then key = "nil" 
         else key = parserNames[currKey] end
 
@@ -282,7 +293,7 @@ function interpit.interp(ast, state, incall, outcall)
     -- setVar
     -- Called to set a varable of the given name/type to the given value
     -- Accepts: name  = Variable name
-    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          type  = Variable type, either SIMPLE_VAR, ARRAY_VAR, or FUNC_STMT
     --          value = Variable value
     --          vtype = Type of value, either NUMLIT_VAL or BOOLLIT_VAL
     --          index = Array index. Required if type = ARRAY_VAR
@@ -300,7 +311,11 @@ function interpit.interp(ast, state, incall, outcall)
             -- insert new value
             state.a[name][index] = value
             print('Assigned '..name..'['..index..'] = '..value) -- debug   
-
+        
+        elseif type == FUNC_STMT then
+            state.f[name] = value
+            print('Assigned '..name..' = \n'..astToStr(value)) -- debug
+        
         else
             if not index then index = 'nil' end -- debug
             print('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
@@ -311,7 +326,7 @@ function interpit.interp(ast, state, incall, outcall)
     -- getVar
     -- Called to get the value of the given variable
     -- Accepts: name  = Variable name
-    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR, or FUNC_STMT
     --          index = Array index. Required if type = ARRAY_VAR
     -- Returns: 
     local function getVar(name, type, index)
@@ -320,6 +335,9 @@ function interpit.interp(ast, state, incall, outcall)
 
         elseif type == ARRAY_VAR then
             return state.a[name][index]
+
+        elseif type == FUNC_STMT then
+            return state.f[name]
 
         else
             if not index then index = 'nil' end
@@ -401,7 +419,7 @@ function interpit.interp(ast, state, incall, outcall)
             -- elseif currVal == SIMPLE_VAR then doSIMPLE_VAR()
             -- elseif currVal == ARRAY_VAR then dodoARRAY_VAR()
             else
-                print('ERROR: Unhandled statement encountered'..debug.getinfo(1, 'n').name) -- debug) -- debug
+                print('ERROR: Unhandled statement encountered: '..debug.getinfo(1, 'n').name) -- debug) -- debug
                 printDebugString()
             end
         end
@@ -468,9 +486,12 @@ function interpit.interp(ast, state, incall, outcall)
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
-        -- curr val is func name
+        -- curr val is func name, then next is func AST
         local name = currVal
-        -- local ast = 
+        advanceNode()
+        local ast = currVal
+
+        setVar(name, FUNC_STMT, ast)
     end
 
 
@@ -479,6 +500,10 @@ function interpit.interp(ast, state, incall, outcall)
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
+
+        -- curr val is func name to call
+        local ast = getVar(currValue, FUNC_STMT)
+        -- parseAST
     end
 
     
@@ -630,34 +655,39 @@ function interpit.interp(ast, state, incall, outcall)
     end
 
 
-    -- interp function body --
-    ---------------------------
-    print('-- Processing AST:') -- Debug output
-    print(astToStr(ast))        -- Debug output
 
-    -- Start the process of getting each node from the
-    -- ast in the order needed for processing (preorder)
-    while (true) do
-        print('In main while loop') -- debug
-
-        -- break if coroutine dead
-        if coroutine.status(astParser) == 'dead' then
-            break
-        end
-
-        -- update currKey and currVal
-        advanceNode()
-        printDebugString() -- debug output
-
-        -- Do actions according to currKey and currVal
-        if currVal == STMT_LIST then
-            doSTMT_LIST()
-        else
-            print('ERROR: Unhandled CONST encountered: ')
-            printDebugString()
-            break
+    local function interpSTMT_LIST(ast)
+        print('-- Processing AST:') -- Debug output
+        print(astToStr(ast))        -- Debug output
+    
+        -- Start the process of getting each node from the
+        -- ast in the order needed for processing (preorder)
+        while (true) do
+            print('In main while loop') -- debug
+    
+            -- break if coroutine dead
+            if coroutine.status(astParser) == 'dead' then
+                break
+            end
+    
+            -- update currKey and currVal
+            advanceNode()
+            printDebugString() -- debug output
+    
+            -- Do actions according to currKey and currVal
+            if currVal == STMT_LIST then
+                doSTMT_LIST()
+            else
+                print('ERROR: Unhandled CONST encountered: ')
+                printDebugString()
+                break
+            end
         end
     end
+
+    -- interp function body --
+    ---------------------------
+    interpSTMT_LIST(ast)
     
     return state
 end
