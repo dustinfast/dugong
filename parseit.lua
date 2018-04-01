@@ -401,7 +401,6 @@ function parse_statement()
     -- 'func' ID stmt_list 'end'
     if matchStr('func') then
         savelex = curr_lexstr
-        print('SL to '.. savelex)
         if matchCat(lexer.ID) then
             pvalid, ast = parse_stmt_list()
             if pvalid and matchStr('end') then
