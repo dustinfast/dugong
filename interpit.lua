@@ -20,7 +20,7 @@ local CONST = 1
 local BOOL = 2
 local STR = 3
 
-parserNames = {"CONST", "BOOL", "STR"}
+local parserNames = {'CONST', 'BOOL', 'STR'}
 
 -- Symbolic Constants for AST
 local STMT_LIST   = 1
@@ -41,10 +41,10 @@ local SIMPLE_VAR  = 15
 local ARRAY_VAR   = 16
 
 local symbolNames = {
-    "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
-    "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
-    "STRLIT_OUT", "BIN_OP", "UN_OP", "NUMLIT_VAL", "BOOLLIT_VAL",
-    "SIMPLE_VAR", "ARRAY_VAR"}
+    'STMT_LIST', 'INPUT_STMT', 'PRINT_STMT', 'FUNC_STMT',
+    'CALL_FUNC', 'IF_STMT', 'WHILE_STMT', 'ASSN_STMT', 'CR_OUT',
+    'STRLIT_OUT', 'BIN_OP', 'UN_OP', 'NUMLIT_VAL', 'BOOLLIT_VAL',
+    'SIMPLE_VAR', 'ARRAY_VAR'}
 
 
 
@@ -53,7 +53,7 @@ local symbolNames = {
 -- numToInt (G Chappell, 2018)
 -- Given a number, return the number rounded toward zero.
 local function numToInt(n)
-    assert(type(n) == "number")
+    assert(type(n) == 'number')
 
     if n >= 0 then
         return math.floor(n)
@@ -67,7 +67,7 @@ end
 -- Given a string, attempt to interpret it as an integer. If this
 -- succeeds, return the integer. Otherwise, return 0.
 local function strToNum(s)
-    assert(type(s) == "string")
+    assert(type(s) == 'string')
 
     -- Try to do string -> number conversion; make protected call
     -- (pcall), so we can handle errors.
@@ -85,16 +85,15 @@ end
 -- numToStr (G Chappell, 2018)
 -- Given a number, return its string form.
 local function numToStr(n)
-    assert(type(n) == "number")
-
-    return ""..n
+    assert(type(n) == 'number')
+    return ''..n
 end
 
 
 -- boolToInt (G Chappell, 2018)
 -- Given a boolean, return 1 if it is true, 0 if it is false.
 local function boolToInt(b)
-    assert(type(b) == "boolean")
+    assert(type(b) == 'boolean')
 
     if b then
         return 1
@@ -109,102 +108,92 @@ end
 -- with numbers replaced by names of symbolic constants used in parseit.
 -- A table is assumed to represent an array.
 function astToStr(ast)
-    if type(ast) == "number" then
+    if type(ast) == 'number' then
         local name = symbolNames[ast]
         if name == nil then
-            return "<Unknown numerical constant: "..ast..">"
+            return '<Unknown numerical constant: '..ast..'>'
         else
             return name
         end
-    elseif type(ast) == "string" then
+    elseif type(ast) == 'string' then
         return '"'..ast..'"'
-    elseif type(ast) == "boolean" then
+    elseif type(ast) == 'boolean' then
         if ast then
-            return "true"
+            return 'true'
         else
-            return "false"
+            return 'false'
         end
-    elseif type(ast) == "table" then
+    elseif type(ast) == 'table' then
         local first = true
-        local result = "{"
+        local result = '{'
         for k = 1, #ast do
             if not first then
-                result = result .. ","
+                result = result .. ','
             end
             result = result .. astToStr(ast[k])
             first = false
         end
-        result = result .. "}"
+        result = result .. '}'
         return result
-    elseif type(ast) == "nil" then
-        return "nil"
+    elseif type(ast) == 'nil' then
+        return 'nil'
     else
-        return "<"..type(ast)..">"
+        return '<'..type(ast)..'>'
     end
 end
 
-
--- printDebugString
--- prints the given key value in a convenient format for debug
-function printDebugString(key, val)
-    -- Build debug output
-    if key == CONST then
-        val = symbolNames[val]
-    end
-    key = parserNames[key]
-    print(key)
-    print(val)
-    io.read("*l") -- pause
-end
 
 -- evalArith
 -- Accepts: lval, rval, and operator of a binary arithmetic expr
 -- Returns: result of the expression, or 0 nil if indeterminate
 function evalArith (lval, rval, op)
-    if op == "+" then return lval + rval
-    elseif op == "-" then return lval - rval
-    elseif op == "*" then return lval * rval
-    elseif op == "/" then return lval / rval
-    elseif op == "%" then return lval % rval
+    if op == '+' then return lval + rval
+    elseif op == '-' then return lval - rval
+    elseif op == '*' then return lval * rval
+    elseif op == '%' then return lval % rval
+    elseif op == '/' then 
+        if rval ~= 0 then return lval / rval end
+        return 0 -- return 0 on div by zero
     else
-      Print("ERROR: Invalid Operator Encountered: "..op)
+      Print('ERROR: Invalid Operator Encountered: '..op)
     end
 end
 
 -- parseAST
 -- A recursive coroutine yielding node values via inorder traversal
--- Accepts: An AST in table form.
+-- Used by interpit.interp
+-- Accepts: An AST node (may be root) in table form.
 -- Yields: AST node value as two vars. A key value pair of any of the following formats:
---              {"CONST", NUMBER}   = A numeric value corresponding to symbolNames[NUMBER]
---              {"LIT", LITERAL}    = A string or numeric literal, in string form
---              {"BOOL", bool}      = A bool in string form, either true or false
---              {"ERR", string}     = An error in string form
--- Ex: given AST "{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,"Hello World"}}}",
---  yields {"CONST", 1}, {"CONST", 3}, {"CONST", 10}, {"LIT", "Hello World"}
+--              {'CONST', NUMBER}   = A numeric value corresponding to symbolNames[NUMBER]
+--              {'LIT', LITERAL}    = A string or numeric literal, in string form
+--              {'BOOL', bool}      = A bool in string form, either true or false
+--              {'ERR', string}     = An error in string form
+-- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
+--  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
 function parseAST(ast)
     -- If node is a symbolic constant, return number for that constant:
-    if type(ast) == "number" then
+    if type(ast) == 'number' then
         local name = symbolNames[ast]
         if name == nil then
-            coroutine.yield("ERROR", "Unknown constant: "..ast)
+            coroutine.yield('ERROR', 'Unknown constant: '..ast)
         else
             coroutine.yield(CONST, ast)
         end
         
     -- If node is a string value:
-    elseif type(ast) == "string" then
+    elseif type(ast) == 'string' then
         coroutine.yield(STR, ast)
     
     -- If node is a bool value
-    elseif type(ast) == "boolean" then
+    elseif type(ast) == 'boolean' then
         if ast then
-            coroutine.yield(BOOL, "true")
+            coroutine.yield(BOOL, 'true')
         else
-            coroutine.yield(BOOL, "false")
+            coroutine.yield(BOOL, 'false')
         end
     
     -- If node is a table, do recursive call to parse it:
-    elseif type(ast) == "table" then
+    elseif type(ast) == 'table' then
         local first = true
         for k = 1, #ast do  -- Note: ipairs doesn't work here. Why?
             parseAST(ast[k])
@@ -212,10 +201,10 @@ function parseAST(ast)
         end
     
     -- If node is empty or of an unexpected type:
-    elseif type(ast) == "nil" then
-        coroutine.yield("ERROR", "Empty tree or node encountered.")
+    elseif type(ast) == 'nil' then
+        coroutine.yield('ERROR', 'Empty tree or node encountered.')
     else
-        coroutine.yield("ERROR", "Invalid type encountered: "..type(ast))
+        coroutine.yield('ERROR', 'Invalid type encountered: '..type(ast))
     end
 end
 
@@ -229,214 +218,430 @@ end
 -- Parameters:
 --   ast     - AST constructed by parseit.parse
 --   state   - Table holding Dugong variables & functions
---             - AST for function xyz is in state.f["xyz"]
---             - Value of simple variable xyz is in state.v["xyz"]
---             - Value of array item xyz[42] is in state.a["xyz"][42]
+--             - AST for function xyz is in state.f['xyz']
+--             - Value of simple variable xyz is in state.v['xyz']
+--             - Value of array item xyz[42] is in state.a['xyz'][42]
 --   incall  - Function to call for line input
 --             - incall() inputs line, returns string with no newline
 --   outcall - Function to call for string output
 --             - outcall(str) outputs str with no added newline
---             - To print a newline, do outcall("\n")
--- Returns: state, updated with changed variable values
+--             - To print a newline, do outcall('\n')
+-- Returns: state, updated with new and/or changed variable values
 function interpit.interp(ast, state, incall, outcall)
     -- Each local interpretation function is given the AST for the
     -- portion of the code it is interpreting. The function-wide
     -- versions of state, incall, and outcall may be used. The
     -- function-wide version of state may be modified as appropriate.
 
-    
-    -- interp utility functions --
-    ------------------------------
+    -- interp variables --
+    ----------------------
+    local astParser = coroutine.create(parseAST) -- ast parsing coroutine
+    local currKey, currVal = nil -- key and val of astParser's current node.
 
-    -- getNextNode
-    -- Gets and returns the key/val associated with the next AST node
+
+    -- interp helper funcs --
+    -------------------------
+
+    -- advanceNode
+    -- Advances astParser and assigns attributes to currKey and currVal
+    local function advanceNode()
+        local ok = nil
+        ok, currKey, currVal = coroutine.resume(astParser, ast)          
+        assert(ok)    
+    end
+
+
+    -- printDebugString
+    -- prints the current key/value in a conveient form. For debug.
+    local function printDebugString()
+        local key, val = nil
+        
+        if currKey == nil then key = "nil" 
+        else key = parserNames[currKey] end
+
+        if currVal == nil then val = "nil" 
+        elseif currKey == CONST then
+            val = symbolNames[currVal]
+        else val = currVal end
+
+        print('{ '..key..', '..val..' }')
+        io.read('*l') -- pause
+    end
+
+
+    -- setVar
+    -- Called to set a varable of the given name/type to the given value
+    -- Accepts: name  = Variable name
+    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          value = Variable value
+    --          vtype = Type of value, either NUMLIT_VAL or BOOLLIT_VAL
+    --          index = Array index. Required if type = ARRAY_VAR
+    -- Returns: None
+    local function setVar(name, type, value, vtype, index)
+        if type == SIMPLE_VAR then
+            state.v[name] = value
+            print('Assigned '..name..' = '..value) -- debug
+
+        elseif type == ARRAY_VAR then
+            -- If state.a[name] doesn't exit, create it
+            local table = state.a[name]
+            if not table then state.a[name] = {} end
+
+            -- insert new value
+            state.a[name][index] = value
+            print('Assigned '..name..'['..index..'] = '..value) -- debug   
+
+        else
+            if not index then index = 'nil' end -- debug
+            print('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
+        end
+    end
+
+
+    -- getVar
+    -- Called to get the value of the given variable
+    -- Accepts: name  = Variable name
+    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          index = Array index. Required if type = ARRAY_VAR
+    -- Returns: 
+    local function getVar(name, type, index)
+        if type == SIMPLE_VAR then
+            return state.v[name]
+
+        elseif type == ARRAY_VAR then
+            return state.a[name][index]
+
+        else
+            if not index then index = 'nil' end
+            print('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
+        end
+    end
+
+    -- parseVar
+    -- Called to get var attributes when a SIMPLE_VAR or ARRAY_VAR is encountered
+    -- Calls advanceNode()
     -- Accepts: None
-    -- Returns: key/val
-    function getNextNode()
-        local ok, key, val = coroutine.resume(astParser, ast)        
-        return key, val      
+    -- Returns: name  = Variable name
+    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          index = Array index. Required if type = ARRAY_VAR
+    local function parseVar()
+        -- Current val is our var type.Next val is var name. 
+        local type = currVal
+        advanceNode()
+        local name = currVal
+        local index = nil
+
+        -- If type is ARRAY_VAR, next val is NUMLIT_VAL, then array index
+        if type == ARRAY_VAR then
+            advanceNode()
+            advanceNode()
+            index = strToNum(currVal)
+        end
+
+        return name, type, index
+    end
+
+
+    -- parseAndGetVar
+    -- Called to get var attributes and value when a SIMPLE_VAR or ARRAY_VAR is encountered
+    -- Calls advanceNode()
+    -- Accepts: None
+    -- Returns: name  = Variable name
+    --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
+    --          value = 
+    --          index = Array index. Required if type = ARRAY_VAR
+    local function parseAndGetVar()
+        local name, type, index = parseVar()
+        local value = getVar(name, type, index)
+        return name, type, value, index
     end
 
 
     -- interp Dugong processing functions --
     ----------------------------------------
-    -- doXXXX
-    -- Called when the specified node XXXX is encountered in the AST.
-    -- Each function gets the next nodes key/val then takes action
-    -- based on its contents
+    -- doSYMBOL
+    -- Called when the specified SYMBOL is encountered in the AST.
+    -- Each function calls advanceNode to set currKey and currVal,
+    -- then acts accordingly, based on its contents.
     -- Accepts/Returns: Function specific
+    -- Scope: Intentionally global
 
-    -- Processes statement lists and calls appropriate handler function
     -- Accepts/Returns: None
     function doSTMT_LIST()
         while (true) do
-            -- break if coroutine dead
-            if coroutine.status(astParser) == "dead" then
+            -- update currKey and currVal
+            advanceNode()
+            
+            -- If coroutine dead, we're done
+            if coroutine.status(astParser) == 'dead' then
                 break
             end
 
             -- get Next node and call appropriate function based on it
-            local key, val = getNextNode()
-            print("In "..debug.getinfo(1, "n").name) --debug output
-            printDebugString(key, val)  -- debug output
+            print('In '..debug.getinfo(1, 'n').name) --debug output
+            printDebugString()  -- debug output
 
-            if key == CONST then
-                --TODO: elseif
-                if val == INPUT_STMT then doINPUT_STMT()
-                elseif val == PRINT_STMT then doPRINT_STMT() 
-                elseif val == FUNC_STMT then doFUNC_STMNT() 
-                elseif val == CALL_FUNC then doCALL_FUNC() 
-                elseif val == IF_STMT then doIF_STMT() 
-                elseif val == WHILE_STMT then doWHILE_STMT()
-                -- if val == ASSN_STMT then doASSN_STMT() end
-                -- if val == CR_OUT then doCR_OUT() end
-                -- if val == STRLIT_OUT then doSTRLIT_OUT() end
-                -- if val == BIN_OP then doBIN_OP() end
-                -- if val == UN_OP then doUN_OP() end
-                -- if val == NUMLIT_VAL then doNUMLIT_VAL() end
-                -- if val == BOOLLIT_VAL then doBOOLLIT_VAL() end
-                elseif val == SIMPLE_VAR then doSIMPLE_VAR()
-                elseif val == ARRAY_VAR then dodoARRAY_VAR()
-                else
-                    print("ERROR: Unhandled statement encountered: ") -- debug
-                    printDebugString(key, val)
-                end
+            if currVal == INPUT_STMT then doINPUT_STMT()
+            elseif currVal == PRINT_STMT then doPRINT_STMT() 
+            elseif currVal == FUNC_STMT then doFUNC_STMNT() 
+            elseif currVal == CALL_FUNC then doCALL_FUNC() 
+            elseif currVal == IF_STMT then doIF_STMT() 
+            elseif currVal == WHILE_STMT then doWHILE_STMT()
+            elseif currVal == ASSN_STMT then doASSN_STMT()
+            -- elseif currVal == SIMPLE_VAR then doSIMPLE_VAR()
+            -- elseif currVal == ARRAY_VAR then dodoARRAY_VAR()
+            else
+                print('ERROR: Unhandled statement encountered'..debug.getinfo(1, 'n').name) -- debug) -- debug
+                printDebugString()
             end
         end
     end
 
-    -- Processes Input statments
+
+    -- I.e. assigns a string value an ARRAY_VAR or SIMPLE_VAR
     -- Accepts/Returns: None
     function doINPUT_STMT()
-        local key, val = getNextNode()
-        print("In "..debug.getinfo(1, "n").name) --debug output
-        printDebugString(key, val)  -- debug output
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+
+        -- get var attributes
+        local name, type, index = parseVar()
+
+        -- Prompt for input and do assignment
+        local value = incall()
+        setVar(name, type, value, NUMLIT_VAL, index)
     end
+
 
     -- Processes print statements
     -- Accepts/Returns:None
     function doPRINT_STMT()
-        local key, val = getNextNode()
-        print("1: In "..debug.getinfo(1, "n").name) --debug output
-        printDebugString(key, val)  -- debug output
+        advanceNode()
+        print('A - In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
         
         -- handle CR_OUT (Print out a CR)
-        if val == CR_OUT then
-            outcall("\n")
+        if currVal == CR_OUT then
+            outcall('\n')
 
-        -- handle STRLIT_OUT (Print out the next node, a string)
-        elseif val == STRLIT_OUT then
-            key, val = getNextNode()
-            print("2: In "..debug.getinfo(1, "n").name) --debug output
-            outcall(val)
+        -- handle STRLIT_OUT 
+        elseif currVal == STRLIT_OUT then
+            -- next val is string to print
+            advanceNode()
+            outcall(currVal)
 
         -- handle BIN_OP
-        elseif val == BIN_OP then
-            print("3: In "..debug.getinfo(1, "n").name) --debug output
+        elseif currVal == BIN_OP then
             outcall(doBIN_OP())
 
         -- handle UN_OP
-        elseif val == UN_OP then
-            print("4: In "..debug.getinfo(1, "n").name) --debug output
-            outcall(doBIN_OP())
+        elseif currVal == UN_OP then
+            outcall(doUN_OP())
         
+        -- handle SIMPLE_VAR and ARRAY_VAR
+        elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
+            local name, type, value, index = parseAndGetVar()
+            outcall(value)
+
         -- unhandled
         else
-            print("ERROR: Unhandled case encountered: ") -- debug
-            printDebugString(key, val)
+            print('ERROR: Unhandled case encountered in '..debug.getinfo(1, 'n').name) -- debug
+            printDebugString()
         end
     end
 
-    -- Processes binary expressions
-    -- Accepts: None
-    -- Returns: Result of the expression
+
+    -- Accepts/Returns: None
+    function doFUNC_STMT()
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+    end
+
+
+    -- Accepts/Returns: None
+    function doCALL_FUNC()
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+    end
+
+    
+    -- Accepts/Returns: None
+    function doIF_STMT()
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+    end
+
+    
+    -- Accepts/Returns: None
+    function doWHILE_STMT()
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+    end
+
+    
+    -- Accepts/Returns: None
+    function doASSN_STMT()
+        advanceNode()
+        print('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+
+        -- Get var attributes
+        local name, type, index = parseVar()
+
+        -- Next node is either an operator (BIN_OP or UN_OP)
+        -- or a value (NUMLIT_VAL, BOOLLIT_VAL)
+        -- or a variable (SIMPLE_VAR, ARRAY_VAR)  
+        advanceNode()
+        local value = nil
+
+        -- handle BIN_OP assignment
+        if currVal == BIN_OP then 
+            value = doBIN_OP()
+            setVar(name, type, value, NUMLIT_VAL, index) 
+                       
+        -- handle UN_OP assignment 
+        elseif currVal == UN_OP then
+            value = doUN_OP()
+            setVar(name, type, value, NUMLIT_VAL, index)     
+
+        -- handle NUMLIT or BOOLLIT assignment
+        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+            local valType = currVal
+            advanceNode()
+            setVar(name, type, currVal, valType, index)
+
+        -- handle assignment of another vars value
+        elseif currVal == SIMPLE_VAR or currVal == ARRAY_VAR then
+            local name2, type2, value2, index2 = parseAndGetVar()
+            setVar(name, type, value2, NUMLIT_VAL, index)
+        end
+    end
+
+    
+    -- Accepts/Returns: None/Result of the expression
     n = 0
     function doBIN_OP()        
         n = n+1
-        local key, val = getNextNode()
-        print(n.." : A In "..debug.getinfo(1, "n").name) --debug output
-        printDebugString(key, val)  -- debug output
+        advanceNode()
+        print('START - '..n..': '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
 
-        local lvalue, rvalue = 0
-        local operator = val
+        local lvalue, ltype = nil   -- left operand
+        local rvalue, rtype = nil   -- right operand
+
+        -- The current node's value is our operator
+        local operator = currVal
+
+        -- For both the l and r values, the following invariants hold:
+        -- Next node == BIN_OP, UN_OP, NUM_LIT, SIMPLE_VAR, or ARRAY_VAR
+        -- If BIN_OP or UN_OP, recursively call this func to process them.
+        -- Else, the current node value is our operand type,
+        -- and the next value is the operand.
 
         -- evaluate lvalue
-        key, val = getNextNode()
-        print(n.." : B In "..debug.getinfo(1, "n").name) --debug output        
-        printDebugString(key, val)  -- debug output
-
-        if val == BIN_OP then 
-            print(n.." lvalue =doBinOp")
+        advanceNode()
+        if currVal == BIN_OP then 
             lvalue = doBIN_OP() 
-        elseif val == UN_OP then
+        elseif currVal == UN_OP then
             lvalue = doUN_OP()
         else
-            lvalue = val
+            ltype = currVal
+            advanceNode()        
+            lvalue = currVal
         end
-        print(n.." Set lvalue: "..lvalue) -- debug
         
         -- evaluate rvalue
-        key, val = getNextNode()
-        print(n.." : C In "..debug.getinfo(1, "n").name) --debug output        
-        printDebugString(key, val)  -- debug output
-
-        if val == BIN_OP then 
-            print(n.." rvalue =doBinOp")            
+        advanceNode()
+        if currVal == BIN_OP then 
             rvalue = doBIN_OP() 
-        elseif val == UN_OP then
+        elseif currVal == UN_OP then
             rvalue = doUN_OP()
         else
-            rvalue = val
+            rtype = currVal
+            advanceNode()        
+            rvalue = currVal
         end
-        print(n.." Set rvalue: "..rvalue) -- debug
 
-        local result = evalArith(lvalue, rvalue, operator)
-        print("BIN_OP results: "..lvalue..' '..operator..' '..rvalue..' = '..result)
+        -- Necessary nodes processed, get result and return.
+        local result = evalArith(lvalue, rvalue, operator) -- debug
+        print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return evalArith(lvalue, rvalue, operator)
     end
 
-    -- Processes unary expressions
-    -- Accepts: None
-    -- Returns: Results of the expression
-    function doUN_OP()
 
+    -- Accepts/Returns: None/Result of the expression
+    m = 0
+    function doUN_OP()        
+        m = m+1
+        advanceNode()
+        print('START - '..m..': '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
+
+        local value, vtype, result = nil
+        
+        -- The current node's value is our operator
+        local operator = currVal
+
+        -- Tthe following invariants hold:
+        -- Next node == BIN_OP, UN_OP, NUM_LIT, SIMPLE_VAR, or ARRAY_VAR
+        -- If BIN_OP or UN_OP, recursively call this func to process them.
+        -- Else, the current node value is our operand type,
+        -- and the next value is the operand.
+
+        advanceNode()
+        if currVal == BIN_OP then 
+            value = doBIN_OP() 
+        elseif currVal == UN_OP then
+            value = doUN_OP()
+        else
+            vtype = currVal
+            advanceNode()        
+            value = currVal
+        end
+
+        if operator == '+' then
+            result = value
+        elseif operator == '-' then
+            result = -value
+        end
+
+        -- Necessary nodes processed, return result.        
+        print('UN_OP results: '..operator..value..' = '..result) -- debug
+        return result
     end
 
 
     -- interp function body --
     ---------------------------
-
-    print("-- Processing AST:") -- Debug output
+    print('-- Processing AST:') -- Debug output
     print(astToStr(ast))        -- Debug output
-
-    -- Ini ast parsing coroutine
-    astParser = coroutine.create(parseAST)
 
     -- Start the process of getting each node from the
     -- ast in the order needed for processing (preorder)
     while (true) do
-        print("In main while loop")
+        print('In main while loop') -- debug
+
         -- break if coroutine dead
-        if coroutine.status(astParser) == "dead" then
+        if coroutine.status(astParser) == 'dead' then
             break
         end
 
-        -- get current node key/val
-        local key, val = getNextNode()
-        printDebugString(key, val) -- debug output
+        -- update currKey and currVal
+        advanceNode()
+        printDebugString() -- debug output
 
-        -- Do actions according to node
-        if key == CONST then
-            if val == STMT_LIST then
-                doSTMT_LIST()
-            else
-                print("ERROR: Unhandled CONST encountered: ")
-                printDebugString(key, val)
-                break
-            end
+        -- Do actions according to currKey and currVal
+        if currVal == STMT_LIST then
+            doSTMT_LIST()
         else
-            print("ERROR: Unhandled key type encountered: ")
-            printDebugString(key, val)
+            print('ERROR: Unhandled CONST encountered: ')
+            printDebugString()
+            break
         end
     end
     
