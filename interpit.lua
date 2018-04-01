@@ -73,7 +73,7 @@ end
 -- Given a string, attempt to interpret it as an integer. If this
 -- succeeds, return the integer. Otherwise, return 0.
 local function strToNum(s)
-    assert(type(s) == 'string')
+    assert(type(s) == 'string' or type(s) == 'number')
 
     -- Try to do string -> number conversion; make protected call
     -- (pcall), so we can handle errors.
@@ -97,22 +97,25 @@ end
 
 
 -- boolToInt (G Chappell, 2018)
--- Given a boolean, return 1 if it is true, 0 if it is false.
+-- Given a boolean in string, boolean, or number
+-- form, return 1 if it is true, 0 if it is false.
 local function boolToInt(b)
-    assert(type(b) == 'boolean' or type(b) == 'string')
-
+    assert(type(b) == 'boolean' or type(b) == 'string' or type(b) == 'number')
+    
     if type(b) == 'boolean' then
         if b then
             return 1
         else
             return 0
         end
-    else
+    elseif type(b) == 'string' then
         if b == 'true' then
             return 1
         else
             return 0
         end
+    elseif type(b) == 'number' then
+        return b
     end
 end
 
@@ -120,6 +123,7 @@ end
 -- convertVal
 -- Given a variable type and val, returns value in correct form
 local function convertVal(type, value)
+    -- print('Converting: '..type..':'..value) -- debug
     if type == BOOLLIT_VAL then return boolToInt(value)
     elseif type == NUMLIT_VAL then return strToNum(value)
     else
