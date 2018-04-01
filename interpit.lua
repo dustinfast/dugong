@@ -107,7 +107,7 @@ end
 -- Given an AST, produce a string holding the AST in (roughly) Lua form,
 -- with numbers replaced by names of symbolic constants used in parseit.
 -- A table is assumed to represent an array.
-function astToStr(ast)
+local function astToStr(ast)
     if type(ast) == 'number' then
         local name = symbolNames[ast]
         if name == nil then
@@ -146,7 +146,7 @@ end
 -- evalArith
 -- Accepts: lval, rval, and operator of a binary arithmetic expr
 -- Returns: result of the expression, or 0 nil if indeterminate
-function evalArith (lval, rval, op)
+local function evalArith (lval, rval, op)
     if op == '+' then return lval + rval
     elseif op == '-' then return lval - rval
     elseif op == '*' then return lval * rval
@@ -159,52 +159,62 @@ function evalArith (lval, rval, op)
     end
 end
 
+
+-- parseAST_FUNC
+-- A helper for parseAST. Yields a functions stmt list as an intact AST
+local function parseAST_FUNC()
+
+end
+
 -- parseAST
 -- A recursive coroutine yielding node values via inorder traversal
 -- Used by interpit.interp
 -- Accepts: An AST node (may be root) in table form.
--- Yields: AST node value as two vars. A key value pair of any of the following formats:
---              {'CONST', NUMBER}   = A numeric value corresponding to symbolNames[NUMBER]
---              {'LIT', LITERAL}    = A string or numeric literal, in string form
---              {'BOOL', bool}      = A bool in string form, either true or false
---              {'ERR', string}     = An error in string form
+-- Yields: AST node value as two vars of one of the following:
+--              CONST, NUMBER   = A numeric value corresponding to symbolNames[NUMBER]
+--              LIT' LITERAL    = A string or numeric literal, in string form
+--              BOOL, bool      = A bool in string form, either true or false
+--              ERR, string     = An error in string form
 -- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
 --  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
-function parseAST(ast)
+local function parseAST(node)
     -- If node is a symbolic constant, return number for that constant:
-    if type(ast) == 'number' then
-        local name = symbolNames[ast]
+    if type(node) == 'number' then
+        local name = symbolNames[node]
         if name == nil then
-            coroutine.yield('ERROR', 'Unknown constant: '..ast)
+            coroutine.yield('ERROR', 'Unknown constant: '..node)
         else
-            coroutine.yield(CONST, ast)
+            -- if node == FUNC_STMT then
+            --     -- tield the STMT_LIST as an AST
+            -- end
+            coroutine.yield(CONST, node)
         end
         
     -- If node is a string value:
-    elseif type(ast) == 'string' then
-        coroutine.yield(STR, ast)
+    elseif type(node) == 'string' then
+        coroutine.yield(STR, node)
     
     -- If node is a bool value
-    elseif type(ast) == 'boolean' then
-        if ast then
+    elseif type(node) == 'boolean' then
+        if node then
             coroutine.yield(BOOL, 'true')
         else
             coroutine.yield(BOOL, 'false')
         end
     
     -- If node is a table, do recursive call to parse it:
-    elseif type(ast) == 'table' then
+    elseif type(node) == 'table' then
         local first = true
-        for k = 1, #ast do  -- Note: ipairs doesn't work here. Why?
-            parseAST(ast[k])
+        for k = 1, #node do  -- Note: ipairs doesn't work here. Why?
+            parseAST(node[k])
             first = false
         end
     
     -- If node is empty or of an unexpected type:
-    elseif type(ast) == 'nil' then
+    elseif type(node) == 'nil' then
         coroutine.yield('ERROR', 'Empty tree or node encountered.')
     else
-        coroutine.yield('ERROR', 'Invalid type encountered: '..type(ast))
+        coroutine.yield('ERROR', 'Invalid type encountered: '..type(node))
     end
 end
 
@@ -213,9 +223,9 @@ end
 --------------------------------------------
 
 -- interp
--- Interpreter, given an AST returned by parseit.parse.
--- Assumes: AST is valid/correct
--- Parameters:
+-- An interpreter for Dugong
+-- Assumes: ast is valid/correct
+-- Accepts:
 --   ast     - AST constructed by parseit.parse
 --   state   - Table holding Dugong variables & functions
 --             - AST for function xyz is in state.f['xyz']
@@ -226,7 +236,7 @@ end
 --   outcall - Function to call for string output
 --             - outcall(str) outputs str with no added newline
 --             - To print a newline, do outcall('\n')
--- Returns: state, updated with new and/or changed variable values
+-- Returns: state, updated with new and/or updated variable values
 function interpit.interp(ast, state, incall, outcall)
     -- Each local interpretation function is given the AST for the
     -- portion of the code it is interpreting. The function-wide
@@ -383,7 +393,7 @@ function interpit.interp(ast, state, incall, outcall)
 
             if currVal == INPUT_STMT then doINPUT_STMT()
             elseif currVal == PRINT_STMT then doPRINT_STMT() 
-            elseif currVal == FUNC_STMT then doFUNC_STMNT() 
+            elseif currVal == FUNC_STMT then doFUNC_STMT() 
             elseif currVal == CALL_FUNC then doCALL_FUNC() 
             elseif currVal == IF_STMT then doIF_STMT() 
             elseif currVal == WHILE_STMT then doWHILE_STMT()
@@ -457,6 +467,10 @@ function interpit.interp(ast, state, incall, outcall)
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
+
+        -- curr val is func name
+        local name = currVal
+        -- local ast = 
     end
 
 
