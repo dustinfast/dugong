@@ -121,9 +121,9 @@ end
 -- Given a variable type and val, returns value in correct form
 local function convertVal(type, value)
     if type == BOOLLIT_VAL then return boolToInt(value)
-    elseif type == NUM_LIT then return strToNum(value)
+    elseif type == NUMLIT_VAL then return strToNum(value)
     else
-        print('ERROR - Unhandled conversion type: '..value)
+        print('ERROR - Unhandled conversion type: '..type)
     end
 end
 
