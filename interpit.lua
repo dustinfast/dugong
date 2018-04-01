@@ -441,14 +441,11 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: Function specific
     -- Scope: Intentionally global
 
+    -- doSTMT_LIST
+    -- Loops through a statement list.
     -- Accepts/Returns: None
     function doSTMT_LIST()
         while (true) do
-            -- -- If coroutine dead, we're done
-            -- if currAST <= 0 or coroutine.status(astParser[currAST]) == 'dead' then
-            --     break
-            -- end
-            
             -- update currKey and currVal
             advanceNode()
             
@@ -476,7 +473,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
-    -- I.e. assigns a string value an ARRAY_VAR or SIMPLE_VAR
+    -- doINPUT_STMT
+    -- Prompts user for a string value and assigns it to state var
     -- Accepts/Returns: None
     function doINPUT_STMT()
         advanceNode()
@@ -492,7 +490,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
-    -- Processes print statements
+    -- doPRINT_STMT
+    -- Outputs an STR_LIT or NUM_LIT to the console
     -- Accepts/Returns:None
     function doPRINT_STMT()
         advanceNode()
@@ -530,6 +529,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
+    -- doFUNC_STMT
+    -- Processes a function definition and saves it to state
     -- Accepts/Returns: None
     function doFUNC_STMT()
         advanceNode()
@@ -545,6 +546,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
+    -- doCALL_FUNC
+    -- "Calls" a previously defined function by proccesing its STMT_LIST ast
     -- Accepts/Returns: None
     function doCALL_FUNC()
         advanceNode()
@@ -557,6 +560,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
     
+    -- doIF_STMT
+    -- Processes an if statment and the necessary cases STMT_LIST
     -- Accepts/Returns: None
     function doIF_STMT()
         advanceNode()
@@ -588,6 +593,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
     
+    -- doWHLIE_STATMENT
+    -- Processes a while statment and its STMT_LIST accordingly
     -- Accepts/Returns: None
     function doWHILE_STMT()
         advanceNode()
@@ -596,6 +603,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
     
+    -- doASSN_STMT
+    -- Process a VAR = VALUE type statment
     -- Accepts/Returns: None
     function doASSN_STMT()
         advanceNode()
@@ -635,7 +644,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
     
-    -- Accepts/Returns: None/Result of the expression
+    -- doBIN_OP
+    -- Accepts: None
+    -- Returns: Result of operation 1 or 0 for boolean operators, else an int
     n = 0
     function doBIN_OP()        
         n = n+1
@@ -709,7 +720,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
-    -- Accepts/Returns: None/Result of the expression
+    -- doUN_OP
+    -- Accepts: None
+    -- Returns: Result of operation 1 or 0 for boolean operators, else an int
     m = 0
     function doUN_OP()        
         m = m+1
@@ -754,7 +767,12 @@ function interpit.interp(start_ast, state, incall, outcall)
         return result
     end
 
-
+    
+    -- interpSTMT_LST
+    -- Called to process an AST STMT_LIST.
+    -- Called first from interp main function body, then
+    -- from any other func that encounters a STMT_LIST
+    -- Acccepts: an AST node of type STMT_LIST
     function interpSTMT_LIST(ast)
         print('-- Processing AST:') -- Debug output
         print(astToStr(ast))        -- Debug output
@@ -772,46 +790,18 @@ function interpit.interp(start_ast, state, incall, outcall)
             currAST = currAST - 1
             nextFlag = true
             if currAST <= 0 then break end
-            
         end
-
-        -- Start the process of getting each node from the
-        -- ast in the order needed for processing (preorder)
-        -- while (true) do
-        --     print('In main while loop') -- debug
-    
-        --     -- break if coroutine dead
-        --     while coroutine.status(astParser[currAST]) ~= 'dead' then
-        --         while currAST ~= 0 do
-        --             advanceNode()
-        --             doSTMT_LIST()
-        --             currAST = currAST - 1
-        --         end
-        --     end
-    
-        --     -- update currKey and currVal
-        --     -- advanceNode()
-        --     -- printDebugString() -- debug output
-    
-        --     -- -- Do actions according to currKey and currVal
-        --     -- if currVal == STMT_LIST then
-        --     --     doSTMT_LIST()
-        --     -- else
-        --     --     print('ERROR: Unhandled CONST encountered: ')
-        --     --     printDebugString()
-        --     --     break
-        --     -- end
-        -- end
     end
+
 
     -- interp function body --
     ---------------------------
-    interpSTMT_LIST(start_ast)
-    
-    return state
+    -- The root node is a STMT_LIST, start the interp process on it.
+    -- After processing, return the state table
+    interpSTMT_LIST(start_ast) 
+    return state                
 end
 
-
--- ***** Module Export *****
+-- Export the interpit module
 return interpit
 
