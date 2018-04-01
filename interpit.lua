@@ -565,24 +565,32 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     
     -- doIF_STMT
-    -- Processes an if statment and the necessary cases STMT_LIST
+    -- Processes an if statment and the necessary case's STMT_LIST
     -- Accepts/Returns: None
     function doIF_STMT()
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
-        --printDebugString()  -- debug output
+        printDebugString()  -- debug output
         -- print(currVal) -- debug
         local value = nil
 
-        -- Curr node's val is an operator (BIN_OP or UN_OP)
+        -- Curr node's val is an operator (BIN_OP or UN_OP) or
+        -- a NUMLIT_VAL or BOOLIT_VAL.
 
-        -- handle BIN_OP assignment
+        -- handle BIN_OP 
         if currVal == BIN_OP then 
             value = doBIN_OP()
                        
-        -- handle UN_OP assignment 
+        -- handle UN_OP 
         elseif currVal == UN_OP then
             value = doUN_OP()   
+        
+        -- handle NUMLIT and BOOLLIT 
+        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+            value = currVal
+        -- unhandled
+        else
+            print('Unhandled value in IF_STMT: '..currVal)
         end
 
         -- if true, process STMT_LIST
@@ -590,7 +598,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- process next node as statement list
             print('eval TRUE')
             advanceNode()
-            printDebugString()  -- debug output
+            interpSTMT_LIST(currVal)
         else
             print ('eval FALSE')
         end
@@ -655,7 +663,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doBIN_OP()        
         n = n+1
         advanceNode()
-        print('START - '..n..': '..debug.getinfo(1, 'n').name) --debug output
+        print('In ('..n..'): '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
         local lvalue, ltype = nil   -- left operand
@@ -679,7 +687,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         else
             ltype = currVal
             advanceNode()        
-            lvalue = convertVal(type, currVal)           
+            lvalue = convertVal(ltype, currVal)           
         end
         
         -- evaluate rvalue
@@ -691,7 +699,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         else
             rtype = currVal
             advanceNode()        
-            rvalue = convertVal(type, currVal)
+            rvalue = convertVal(rtype, currVal)
         end
 
         -- Necessary nodes processed, get appropriate result and return.
@@ -719,6 +727,9 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('Unhandled operator encountered: '..operator)
         end
 
+        local disp = result -- debug
+        if result == true then result = 'true' --debug
+        elseif result == false then result = 'false'end -- debug
         print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
@@ -731,7 +742,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doUN_OP()        
         m = m+1
         advanceNode()
-        print('START - '..m..': '..debug.getinfo(1, 'n').name) --debug output
+        print('In ('..m..'): '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
         local value, type, result = nil
