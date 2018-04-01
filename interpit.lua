@@ -24,10 +24,11 @@ local FUNC_AST = 5
 local FUNC_NAME = 6
 local IF_OP = 7
 local IF_AST = 8
+local STMTLST = 9
 
 local astNames = {
     'ERROR', 'CONST', 'BOOL', 'STR', 'FUNC_AST', 'FUNC_NAME',
-    'IF_OP', 'IF_AST'}
+    'IF_OP', 'IF_AST', 'STMTLST'}
 
 -- Symbolic Constants for AST
 local STMT_LIST   = 1
@@ -208,6 +209,8 @@ end
 --  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
 local funcFlag = false
 local ifFlag = false
+local stmtFlag = false
+local prevNode = nil
 local function parseAST(node)
     -- If node is a symbolic constant, return number for that constant:
     if type(node) == 'number' then
@@ -215,18 +218,28 @@ local function parseAST(node)
         if name == nil then
             coroutine.yield(ERROR, 'Unknown constant: '..node)
         else
-            if node == FUNC_STMT then
-                -- set funcFlag, so we return the next two
-                -- nodes as a FUNC_NAME and FUNC_AST
-                funcFlag = true
+            -- if node == FUNC_STMT then
+            --     -- set funcFlag, so we return the next two
+            --     -- nodes as a FUNC_NAME and FUNC_AST
+            --     funcFlag = true
+            -- end
+            -- if node == IF_STMT then
+            --     -- set ifFlag, so we return the next two
+            --     -- nodes as a IF_IP and IF_AST
+            --     print('ifFlag TRUE')
+            --     ifFlag = true
+            -- end
+
+            -- Return all but the first STMT_LIST encountered 
+            -- as an intact AST (i.e. the previous node)
+            if node == STMT_LIST and stmtFlag then
+                coroutine.yield(STMTLST, prevNode)
+            elseif node == STMT_LIST and not stmtFlag then
+                stmtFlag = true
+                coroutine.yield(CONST, node)
+            else
+                coroutine.yield(CONST, node)                   
             end
-            if node == IF_STMT then
-                -- set ifFlag, so we return the next two
-                -- nodes as a IF_IP and IF_AST
-                print('ifFlag TRUE')
-                ifFlag = true
-            end
-            coroutine.yield(CONST, node)
         end
         
     -- If node is a string value:
@@ -244,15 +257,15 @@ local function parseAST(node)
     -- If node is a table, do recursive call to parse it:
     elseif type(node) == 'table' then
         for i = 1, #node do  
-            if funcFlag then
-                -- if funcFlag set, yield the next two
-                -- as a FUNC_NAME and FUNC_AST, because funcs
-                -- get their STMT_LIST as an intact ASt
-                coroutine.yield(FUNC_NAME, node[i])
-                coroutine.yield(FUNC_AST, node[i+1])
-                funcFlag = false
-                break
-            end
+            -- if funcFlag then
+            --     -- if funcFlag set, yield the next two
+            --     -- as a FUNC_NAME and FUNC_AST, because funcs
+            --     -- get their STMT_LIST as an intact ASt
+            --     coroutine.yield(FUNC_NAME, node[i])
+            --     coroutine.yield(FUNC_AST, node[i+1])
+            --     funcFlag = false
+            --     break
+            -- end
             -- if ifFlag then
             --     -- if ifFlag set, yield the next two
             --     -- as a IF_NAME and IF_AST, because ifs
@@ -267,6 +280,7 @@ local function parseAST(node)
             --     ifFlag = false
             --     break
             -- end
+            prevNode = node
             parseAST(node[i])
         end
     
@@ -336,7 +350,11 @@ function interpit.interp(start_ast, state, incall, outcall)
             val = symbolNames[currVal]
         else val = currVal end
 
-        print('{ '..key..', '..val..' }')
+        if type(val) == 'table' then
+            print(astToStr(val))
+        else
+            print('{ '..key..', '..val..' }')
+        end
         io.read('*l') -- pause
     end
 
