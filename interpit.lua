@@ -236,7 +236,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- to maintain info for different coroutine instances
     local firstFlag = {} -- denotes the initial STMT_LIST has been encountered
     local stmtList = {} -- container to hold STMT_LISTs
-    local stmtDone = {}  -- denotes an intact STMT_LIST was yielded
+    local ifList = {}   -- container to hold IF_STMTs
+    local subtreeDone = {}  -- denotes an intact STMT_LIST was yielded
     local function iterateSubtree(node)
         -- If node is a symbolic constant:
         if type(node) == 'number' then        
@@ -247,15 +248,21 @@ function interpit.interp(start_ast, state, incall, outcall)
             else
                 if node == STMT_LIST then
                     if firstFlag[currAST] and stmtList[currAST] then
-                        -- print('flagunset')
+                        print('STMT_LIST ast served')
                         coroutine.yield(STMTLST, stmtList[currAST])
                         stmtList[currAST] = nil
-                        stmtDone[currAST] = true
+                        subtreeDone[currAST] = true
                     else
                         -- denote first STMT_LIST has been seen
-                        -- print('flagset') 
                         firstFlag[currAST] = true
                         coroutine.yield(CONST, node)    
+                    end
+                elseif node == IF_STMT then
+                    if ifList[currAST] then
+                        print('IF_STMT ast served')
+                        coroutine.yield(STMTLST, ifList[currAST])
+                        ifList[currAST] = nil
+                        subtreeDone[currAST] = true
                     end
                 else
                     coroutine.yield(CONST, node)    
@@ -284,18 +291,32 @@ function interpit.interp(start_ast, state, incall, outcall)
 
                 -- If second next node is stmt list, 
                 -- save it to return later intact
-                if firstFlag[currAST] and (i+1) <= #node and node[i+1][1] == STMT_LIST then
-                    stmtList[currAST] = node[i+1]
-                    -- print('node saved: '..astToStr(stmtList[currAST])..'\n') --debug
+                if (i+1) <= #node then
+                    if firstFlag[currAST] and (i+1) <= #node and node[i+1][1] == STMT_LIST then
+                        stmtList[currAST] = node[i+1]                        
+                        print('STMT_LIST ast saved: '..astToStr(stmtList[currAST])..'\n') --debug
+                    end
+                    if (i+1) <= #node and node[i+1][1] == IF_STMT then
+                        ifList[currAST] = node[i+1]
+                        print('IF_STMT ast saved: '..astToStr(ifList[currAST])..'\n') --debug 
+                    end
                 end
+
+                -- if firstFlag[currAST] and 
+                --     (i+1) <= #node and 
+                --     (node[i+1][1] == STMT_LIST or
+                --     node[i+1][1] == IF_STMT) then
+                --     stmtList[currAST] = node[i+1]
+                --     print('ast saved: '..astToStr(stmtList[currAST])..'\n') --debug
+                -- end
                 
                 -- recursively parse next node
                 iterateSubtree(node[i]) 
 
                 -- if we last yielded a STMT_LIST, break out of the current subtree
-                if stmtDone[currAST] then 
+                if subtreeDone[currAST] then 
                     --print('brk') -- debug
-                    stmtDone[currAST] = false 
+                    subtreeDone[currAST] = false 
                     return 
                 end
                 
@@ -573,74 +594,80 @@ function interpit.interp(start_ast, state, incall, outcall)
         printDebugString()  -- debug output
         local value = nil
 
-        if hit and boolToInt(hit) == 1 then 
-            print('hit advance')
-            advanceNode() end
-        -- Curr node's val is either an operator (BIN_OP or UN_OP) or
-        -- NUMLIT_VAL or BOOLIT_VAL, OR it's a STMT_LIST.
-
-        -- handle nil (end of if sTMT_LIST)
-        if currVal == nil then return
-
-        -- handle BIN_OP 
-        elseif currVal == BIN_OP then 
-            value = doBIN_OP()
-            print('comparing '..value) -- debug
-                       
-        -- handle UN_OP 
-        elseif currVal == UN_OP then
-            value = doUN_OP()   
-            print('comparing '..value) -- debug
         
-        -- handle NUMLIT and BOOLLIT 
-        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+
+        -- while currValue ~= nil do
             advanceNode()
-            value = currVal
-            print('comparing '..value) -- debug
+            print(astToStr(currValue)..'\n')
+        -- end
 
-        -- handle STMT_LIST, i.e the if's "else" branch
-        elseif currVal == STMT_LIST then
-            if boolToInt(hit) == 1 then
-                -- skip STMT_LIST, we already eval'd a true cond
-                advanceNode()
-                print('Eval ELSE hit:')
-                print('Skipping:')
-                printDebugString()
-                advanceNode()
-                --return
-            else
-                -- process STMT_LIST, since we didn't hit other conds
-                print('eval ELSE !hit: ')
-                interpSTMT_LIST(currVal)
-                return
-            end
+        -- if hit and boolToInt(hit) == 1 then 
+        --     print('hit advance')
+        --     advanceNode() end
+        -- -- Curr node's val is either an operator (BIN_OP or UN_OP) or
+        -- -- NUMLIT_VAL or BOOLIT_VAL, OR it's a STMT_LIST.
 
-        -- unhandled
-        else
-            print('Unhandled value in IF_STMT: '..currVal)
-        end
+        -- -- handle nil (end of if sTMT_LIST)
+        -- if currVal == nil then return
 
-        -- Handle specific (if/elseif) statements
-        -- Do the correct action based on value (a bool in int form)
-        if boolToInt(value) == 1 then 
-            -- process next node as statement list
-            print('eval TRUE -')
-            printDebugString()
-            advanceNode()
-            interpSTMT_LIST(currVal)
-        else
-            -- move past next node if it's a stmt lst
-            print ('eval FALSE -')
-            advanceNode()
-            print('Skipping:')
-            printDebugString()
-        end
+        -- -- handle BIN_OP 
+        -- elseif currVal == BIN_OP then 
+        --     value = doBIN_OP()
+        --     print('comparing '..value) -- debug
+                       
+        -- -- handle UN_OP 
+        -- elseif currVal == UN_OP then
+        --     value = doUN_OP()   
+        --     print('comparing '..value) -- debug
+        
+        -- -- handle NUMLIT and BOOLLIT 
+        -- elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+        --     advanceNode()
+        --     value = currVal
+        --     print('comparing '..value) -- debug
 
-        -- recursively call doIF_STMT() again to see if we're
-        -- processing another part of the if statement. 
-        -- We pass value to signal if we matched a cond or not
-        print('rcall='..boolToInt(value))
-        doIF_STMT(value)
+        -- -- handle STMT_LIST, i.e the if's "else" branch
+        -- elseif currVal == STMT_LIST then
+        --     if boolToInt(hit) == 1 then
+        --         -- skip STMT_LIST, we already eval'd a true cond
+        --         advanceNode()
+        --         print('Eval ELSE hit:')
+        --         print('Skipping:')
+        --         printDebugString()
+        --         advanceNode()
+        --         --return
+        --     else
+        --         -- process STMT_LIST, since we didn't hit other conds
+        --         print('eval ELSE !hit: ')
+        --         interpSTMT_LIST(currVal)
+        --         return
+        --     end
+
+        -- -- unhandled
+        -- else
+        --     print('Unhandled value in IF_STMT: '..currVal)
+        -- end
+
+        -- -- Handle specific (if/elseif) statements
+        -- -- Do the correct action based on value (a bool in int form)
+        -- if boolToInt(value) == 1 then 
+        --     -- process next node as statement list
+        --     print('eval TRUE -')
+        --     advanceNode()
+        --     interpSTMT_LIST(currVal)
+        -- else
+        --     -- move past next node if it's a stmt lst
+        --     print ('eval FALSE -')
+        --     advanceNode()
+        --     print('Skipping:')
+        --     printDebugString()
+        -- end
+
+        -- -- recursively call doIF_STMT() again to see if we're
+        -- -- processing another part of the if statement. 
+        -- -- We pass value to signal if we matched a cond or not
+        -- print('rcall='..boolToInt(value))
+        -- doIF_STMT(value)
        
     end
 
@@ -837,7 +864,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         ASTrees[currAST] = ast
         firstFlag[currAST] = false
         stmtList[currAST] = nil
-        stmtDone[currAST] = false
+        ifList[currAST] = nil
+        subtreeDone[currAST] = false
         astParser[currAST] = coroutine.create(iterateSubtree)
 
         local nextFlag = false;
