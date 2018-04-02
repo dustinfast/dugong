@@ -189,13 +189,6 @@ local function evalArith (lval, rval, op)
     end
 end
 
-
--- parseAST_FUNC
--- A helper for parseAST. Yields a FUNC_STMT's statment list as an intact AST
-local function parseAST_FUNC()
-
-end
-
 -- parseAST
 -- A recursive coroutine yielding node values via inorder traversal
 -- Used by interpit.interp
@@ -207,48 +200,49 @@ end
 --              ERR, string     = An error in string form
 -- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
 --  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
-local funcFlag = false
-local ifFlag = false
-local stmtFlag = false
-local prevNode = nil
+local firstFlag = false -- denotes the initial STMT_LIST has been encountered
+local prevNode = nil    -- denotes previous node processed
+local stmtList = nil -- container to hold STMT_LISTs
+local stmtDone = false  -- denotes an intact STMT_LIST was yielded
+
 local function parseAST(node)
-    -- If node is a symbolic constant, return number for that constant:
-    if type(node) == 'number' then
+    local currIndex = 1 -- index in current node
+    local stmtFlag = false  -- denotes an intact STMT_LIST was last returned
+
+    -- If node is a symbolic constant:
+    if type(node) == 'number' then        
         local name = symbolNames[node]
+        
         if name == nil then
             coroutine.yield(ERROR, 'Unknown constant: '..node)
         else
-            -- if node == FUNC_STMT then
-            --     -- set funcFlag, so we return the next two
-            --     -- nodes as a FUNC_NAME and FUNC_AST
-            --     funcFlag = true
-            -- end
-            -- if node == IF_STMT then
-            --     -- set ifFlag, so we return the next two
-            --     -- nodes as a IF_IP and IF_AST
-            --     print('ifFlag TRUE')
-            --     ifFlag = true
-            -- end
-
-            -- Return all but the first STMT_LIST encountered 
-            -- as an intact AST (i.e. the previous node)
-            if node == STMT_LIST and stmtFlag then
-                coroutine.yield(STMTLST, prevNode)
-            elseif node == STMT_LIST and not stmtFlag then
-                stmtFlag = true
-                coroutine.yield(CONST, node)
+            if node == STMT_LIST then
+                if firstFlag and stmtList then
+                    -- print('flagunset')
+                    coroutine.yield(STMTLST, stmtList)
+                    stmtList = nil
+                    stmtDone = true
+                else
+                    -- denote first STMT_LIST seen
+                    -- print('flagset') 
+                    firstFlag = true
+                    coroutine.yield(CONST, node)    
+                end
             else
-                coroutine.yield(CONST, node)                   
+                coroutine.yield(CONST, node)    
             end
         end
         
     -- If node is a string value:
     elseif type(node) == 'string' then
+        -- print('string')
         coroutine.yield(STR, node)
     
-    -- If node is a bool value
+    -- If node is a bool value:
     elseif type(node) == 'boolean' then
+        print('BOOL!')
         if node then
+            
             coroutine.yield(BOOL, 'true')
         else
             coroutine.yield(BOOL, 'false')
@@ -257,33 +251,22 @@ local function parseAST(node)
     -- If node is a table, do recursive call to parse it:
     elseif type(node) == 'table' then
         for i = 1, #node do  
-            -- if funcFlag then
-            --     -- if funcFlag set, yield the next two
-            --     -- as a FUNC_NAME and FUNC_AST, because funcs
-            --     -- get their STMT_LIST as an intact ASt
-            --     coroutine.yield(FUNC_NAME, node[i])
-            --     coroutine.yield(FUNC_AST, node[i+1])
-            --     funcFlag = false
-            --     break
-            -- end
-            -- if ifFlag then
-            --     -- if ifFlag set, yield the next two
-            --     -- as a IF_NAME and IF_AST, because ifs
-            --     -- get their STMT_LIST as an intact ASt
-            --     -- print(node[i][1][1])
-            --     if node[i][1][1] == BIN_OP then 
+            -- print('table')
 
-            --     else
-            --         coroutine.yield(IF_OP, node[i][1][2])
-            --         -- coroutine.yield(IF_AST, node[i+1])
-            --     end
-            --     ifFlag = false
-            --     break
-            -- end
-            prevNode = node
-            parseAST(node[i])
+            -- If second next node is stmt list, 
+            -- save it to return later intact
+            if firstFlag and (i+1) <= #node and node[i+1][1] == STMT_LIST then
+                stmtList = node[i+1]
+                print('node saved: '..astToStr(stmtList)..'\n') --debug
+            end
+            
+            -- recursively parse next node
+            parseAST(node[i]) 
+
+            if stmtDone then stmtDone = false print ('brk') return end
+            
         end
-    
+
     -- If node is empty or of an unexpected type:
     elseif type(node) == 'nil' then
         coroutine.yield(ERROR, 'Empty node encountered.')
@@ -618,7 +601,10 @@ function interpit.interp(start_ast, state, incall, outcall)
             advanceNode()
             interpSTMT_LIST(currVal)
         else
+            -- move past next node if it's a stmt lst
             print ('eval FALSE')
+            advanceNode()
+            printDebugString()
         end
     end
 
