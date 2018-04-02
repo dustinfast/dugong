@@ -189,92 +189,6 @@ local function evalArith (lval, rval, op)
     end
 end
 
--- parseAST
--- A recursive coroutine yielding node values via inorder traversal
--- Used by interpit.interp
--- Accepts: An AST node (may be root) in table form.
--- Yields: AST node value as two vars of one of the following:
---              CONST, NUMBER   = A numeric value corresponding to symbolNames[NUMBER]
---              LIT' LITERAL    = A string or numeric literal, in string form
---              BOOL, bool      = A bool in string form, either true or false
---              ERR, string     = An error in string form
--- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
---  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
-local firstFlag = false -- denotes the initial STMT_LIST has been encountered
-local prevNode = nil    -- denotes previous node processed
-local stmtList = nil -- container to hold STMT_LISTs
-local stmtDone = false  -- denotes an intact STMT_LIST was yielded
-
-local function parseAST(node)
-    local currIndex = 1 -- index in current node
-    local stmtFlag = false  -- denotes an intact STMT_LIST was last returned
-
-    -- If node is a symbolic constant:
-    if type(node) == 'number' then        
-        local name = symbolNames[node]
-        
-        if name == nil then
-            coroutine.yield(ERROR, 'Unknown constant: '..node)
-        else
-            if node == STMT_LIST then
-                if firstFlag and stmtList then
-                    -- print('flagunset')
-                    coroutine.yield(STMTLST, stmtList)
-                    stmtList = nil
-                    stmtDone = true
-                else
-                    -- denote first STMT_LIST seen
-                    -- print('flagset') 
-                    firstFlag = true
-                    coroutine.yield(CONST, node)    
-                end
-            else
-                coroutine.yield(CONST, node)    
-            end
-        end
-        
-    -- If node is a string value:
-    elseif type(node) == 'string' then
-        -- print('string')
-        coroutine.yield(STR, node)
-    
-    -- If node is a bool value:
-    elseif type(node) == 'boolean' then
-        print('BOOL!')
-        if node then
-            
-            coroutine.yield(BOOL, 'true')
-        else
-            coroutine.yield(BOOL, 'false')
-        end
-    
-    -- If node is a table, do recursive call to parse it:
-    elseif type(node) == 'table' then
-        for i = 1, #node do  
-            -- print('table')
-
-            -- If second next node is stmt list, 
-            -- save it to return later intact
-            if firstFlag and (i+1) <= #node and node[i+1][1] == STMT_LIST then
-                stmtList = node[i+1]
-                print('node saved: '..astToStr(stmtList)..'\n') --debug
-            end
-            
-            -- recursively parse next node
-            parseAST(node[i]) 
-
-            if stmtDone then stmtDone = false print ('brk') return end
-            
-        end
-
-    -- If node is empty or of an unexpected type:
-    elseif type(node) == 'nil' then
-        coroutine.yield(ERROR, 'Empty node encountered.')
-    else
-        coroutine.yield(ERROR, 'Invalid type encountered: '..type(node))
-    end
-end
-
 
 ----- Primary Function for Client Code -----
 --------------------------------------------
@@ -295,10 +209,6 @@ end
 --             - To print a newline, do outcall('\n')
 -- Returns: state, updated with new and/or updated variable values
 function interpit.interp(start_ast, state, incall, outcall)
-    -- Each local interpretation function is given the AST for the
-    -- portion of the code it is interpreting. The function-wide
-    -- versions of state, incall, and outcall may be used. The
-    -- function-wide version of state may be modified as appropriate.
 
     -- interp variables --
     ----------------------
@@ -311,6 +221,93 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- interp helper funcs --
     -------------------------
 
+    -- iterateSubtree
+    -- A recursive coroutine yielding node values via inorder traversal
+    -- Used by interpit.interp
+    -- Accepts: An AST node (may be root) in table form.
+    -- Yields: AST node value as two vars of one of the following:
+    --              CONST, NUMBER   = A numeric value corresponding to symbolNames[NUMBER]
+    --              LIT' LITERAL    = A string or numeric literal, in string form
+    --              BOOL, bool      = A bool in string form, either true or false
+    --              ERR, string     = An error in string form
+    -- Ex: given AST '{STMT_LIST,{PRINT_STMT,{STRLIT_OUT,'Hello World'}}}',
+    --  yields {'CONST', 1}, {'CONST', 3}, {'CONST', 10}, {'LIT', 'Hello World'}
+    -- Variables: the below table vars correspond to varName[currAST] and are used
+    -- to maintain info for different coroutine instances
+    local firstFlag = {} -- denotes the initial STMT_LIST has been encountered
+    local stmtList = {} -- container to hold STMT_LISTs
+    local stmtDone = {}  -- denotes an intact STMT_LIST was yielded
+    local function iterateSubtree(node)
+        -- If node is a symbolic constant:
+        if type(node) == 'number' then        
+            local name = symbolNames[node]
+            
+            if name == nil then
+                coroutine.yield(ERROR, 'Unknown constant: '..node)
+            else
+                if node == STMT_LIST then
+                    if firstFlag[currAST] and stmtList[currAST] then
+                        -- print('flagunset')
+                        coroutine.yield(STMTLST, stmtList[currAST])
+                        stmtList[currAST] = nil
+                        stmtDone[currAST] = true
+                    else
+                        -- denote first STMT_LIST has been seen
+                        -- print('flagset') 
+                        firstFlag[currAST] = true
+                        coroutine.yield(CONST, node)    
+                    end
+                else
+                    coroutine.yield(CONST, node)    
+                end
+            end
+            
+        -- If node is a string value:
+        elseif type(node) == 'string' then
+            -- print('string')
+            coroutine.yield(STR, node)
+        
+        -- If node is a bool value:
+        elseif type(node) == 'boolean' then
+            print('BOOL!')
+            if node then
+                
+                coroutine.yield(BOOL, 'true')
+            else
+                coroutine.yield(BOOL, 'false')
+            end
+        
+        -- If node is a table, do recursive call to parse it:
+        elseif type(node) == 'table' then
+            for i = 1, #node do  
+                -- print('table')
+
+                -- If second next node is stmt list, 
+                -- save it to return later intact
+                if firstFlag[currAST] and (i+1) <= #node and node[i+1][1] == STMT_LIST then
+                    stmtList[currAST] = node[i+1]
+                    -- print('node saved: '..astToStr(stmtList[currAST])..'\n') --debug
+                end
+                
+                -- recursively parse next node
+                iterateSubtree(node[i]) 
+
+                -- if we last yielded a STMT_LIST, break out of the current subtree
+                if stmtDone[currAST] then 
+                    --print('brk') -- debug
+                    stmtDone[currAST] = false 
+                    return 
+                end
+                
+            end
+
+        -- If node is empty or of an unexpected type:
+        elseif type(node) == 'nil' then
+            coroutine.yield(ERROR, 'Empty node encountered.')
+        else
+            coroutine.yield(ERROR, 'Invalid type encountered: '..type(node))
+        end
+    end
     -- advanceNode
     -- Advances astParser and assigns attributes to currKey and currVal
     local function advanceNode()
@@ -471,8 +468,9 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif currVal == WHILE_STMT then doWHILE_STMT()
             elseif currVal == ASSN_STMT then doASSN_STMT()
             else
-                print('ERROR: Unhandled statement encountered: '..debug.getinfo(1, 'n').name) -- debug) -- debug
+                print('ERROR: Unhandled STMT in '..debug.getinfo(1, 'n').name) -- debug) -- debug
                 printDebugString()
+                return
             end
         end
     end
@@ -567,45 +565,83 @@ function interpit.interp(start_ast, state, incall, outcall)
     
     -- doIF_STMT
     -- Processes an if statment and the necessary case's STMT_LIST
-    -- Accepts/Returns: None
-    function doIF_STMT()
+    -- Accepts: None (single var 'hit' is only used in recursive calls)
+    -- Returns: None
+    function doIF_STMT(hit)
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
-        -- print(currVal) -- debug
         local value = nil
 
-        -- Curr node's val is an operator (BIN_OP or UN_OP) or
-        -- a NUMLIT_VAL or BOOLIT_VAL.
+        if hit and boolToInt(hit) == 1 then 
+            print('hit advance')
+            advanceNode() end
+        -- Curr node's val is either an operator (BIN_OP or UN_OP) or
+        -- NUMLIT_VAL or BOOLIT_VAL, OR it's a STMT_LIST.
+
+        -- handle nil (end of if sTMT_LIST)
+        if currVal == nil then return
 
         -- handle BIN_OP 
-        if currVal == BIN_OP then 
+        elseif currVal == BIN_OP then 
             value = doBIN_OP()
+            print('comparing '..value) -- debug
                        
         -- handle UN_OP 
         elseif currVal == UN_OP then
             value = doUN_OP()   
+            print('comparing '..value) -- debug
         
         -- handle NUMLIT and BOOLLIT 
         elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+            advanceNode()
             value = currVal
+            print('comparing '..value) -- debug
+
+        -- handle STMT_LIST, i.e the if's "else" branch
+        elseif currVal == STMT_LIST then
+            if boolToInt(hit) == 1 then
+                -- skip STMT_LIST, we already eval'd a true cond
+                advanceNode()
+                print('Eval ELSE hit:')
+                print('Skipping:')
+                printDebugString()
+                advanceNode()
+                --return
+            else
+                -- process STMT_LIST, since we didn't hit other conds
+                print('eval ELSE !hit: ')
+                interpSTMT_LIST(currVal)
+                return
+            end
+
         -- unhandled
         else
             print('Unhandled value in IF_STMT: '..currVal)
         end
 
-        -- if true, process STMT_LIST
-        if value == 1 then 
+        -- Handle specific (if/elseif) statements
+        -- Do the correct action based on value (a bool in int form)
+        if boolToInt(value) == 1 then 
             -- process next node as statement list
-            print('eval TRUE')
+            print('eval TRUE -')
+            printDebugString()
             advanceNode()
             interpSTMT_LIST(currVal)
         else
             -- move past next node if it's a stmt lst
-            print ('eval FALSE')
+            print ('eval FALSE -')
             advanceNode()
+            print('Skipping:')
             printDebugString()
         end
+
+        -- recursively call doIF_STMT() again to see if we're
+        -- processing another part of the if statement. 
+        -- We pass value to signal if we matched a cond or not
+        print('rcall='..boolToInt(value))
+        doIF_STMT(value)
+       
     end
 
     
@@ -799,11 +835,14 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- increase ast parser count by 1 and init ast parser coroutine
         currAST = currAST + 1
         ASTrees[currAST] = ast
-        astParser[currAST] = coroutine.create(parseAST)
+        firstFlag[currAST] = false
+        stmtList[currAST] = nil
+        stmtDone[currAST] = false
+        astParser[currAST] = coroutine.create(iterateSubtree)
 
         local nextFlag = false;
         while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
-            print('In main loop') -- debug
+            print('In main loop # '..currAST) -- debug
             if not nextFlag then advanceNode() end
             doSTMT_LIST()
             currAST = currAST - 1
@@ -811,6 +850,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             if currAST <= 0 then break end
         end
     end
+
+
 
 
     -- interp function body --
