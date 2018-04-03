@@ -211,7 +211,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = false
+    local debugmode = true
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
     local currAST = 0            -- ASTtrees/parsers index (a pos num)
@@ -474,7 +474,6 @@ function interpit.interp(start_ast, state, incall, outcall)
             end
 
             printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-            printDebug()  -- debug output
 
             -- call appropriate function based on currVal
             -- Invariant: If we're seeing BIN_OP or UN_OP, break
@@ -505,7 +504,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doINPUT_STMT()
         advanceNode()
         -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebug()  -- debug output
 
         -- get var attributes
         local name, type, index = parseVar()
@@ -535,7 +533,6 @@ function interpit.interp(start_ast, state, incall, outcall)
 
         while true do
             printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-            printDebug()  -- debug output
             
             -- handle CR_OUT (Print out a CR)
             if currVal == CR_OUT then
@@ -604,7 +601,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doFUNC_STMT()
         advanceNode()
         -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebug()  -- debug output
 
         -- curr val is func name, then next is functions body (an AST)
         local name = currVal
@@ -622,7 +618,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doCALL_FUNC()
         advanceNode()
         -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebug()  -- debug output
 
         -- curr val is func name, get its ast and parse it
         local ast = getVar(currVal, FUNC_STMT)
@@ -637,7 +632,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doIF_STMT(cond_hit)
         advanceNode()
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebug()  -- debug output
         local value, execute = nil
         local matched = false   -- denote if we've matched a cond at this depth
 
@@ -721,7 +715,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doWHILE_STMT()
         advanceNode()
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebug()  -- debug output
 
         local temp = {}         -- temp
         local expr = {}         -- holds expression AST
@@ -752,10 +745,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- debug
         -- printDebug('while expr: '..op_type)
         -- printDebug(astToStr(expr))
-        -- printDebug('\n')
         -- printDebug(astToStr(execute))
-        -- printDebug('\n')
-        -- printDebug()
 
         while true do
             -- handle BIN_OP 
@@ -798,7 +788,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doASSN_STMT()
         advanceNode()
         -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebug()  -- debug output
 
         -- Get var attributes
         local name, type, index = parseVar()
@@ -839,7 +828,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doBIN_OP()        
         advanceNode()
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebug()  -- debug output
 
         local name, index = nil   -- temp vars
         local lvalue, ltype = nil       -- left operand
@@ -929,7 +917,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doUN_OP()        
         advanceNode()
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebug()  -- debug output
 
         local name, index               -- temp
         local value, type, result = nil -- operand
@@ -990,8 +977,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         subtreeDone[currAST] = false
         ASTParsers[currAST] = coroutine.create(astParse)
 
-        printDebug('In MAIN loop #'..currAST.. ' for:') -- debug            
-        printDebug(astToStr(ASTrees[currAST])) -- debug
+        printDebug('In MAIN loop #'..currAST.. ' for:\n'..astToStr(ASTrees[currAST])) -- debug            
         local temp = currAST
 
 
@@ -1016,8 +1002,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         subtreeDone[currAST] = false
         ASTParsers[currAST] = coroutine.create(astParse)
         
-        printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
-        printDebug(astToStr(ASTrees[currAST]))  -- debug          
+        printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for: '..ASTrees[currAST]) -- debug
         local temp = currAST
 
         local result = doSTMT_LIST()
