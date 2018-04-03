@@ -62,6 +62,7 @@ end
 -- outputString
 -- Output the given string to standard output, with no added newline.
 function outputString(s)
+    -- print("***\n*** Outcall: ".. s .. "\n")
     io.write(s)
 end
 
@@ -188,14 +189,14 @@ function runDugong(program, state, execmsg)
     local good, done, ast = parseit.parse(program)
     local newstate
     if good and done then
-        print('-- Parse OK.') -- Debug output
+        -- print('-- Parse OK.') -- Debug output
         -- writeAST(ast) -- Debug output
         if execmsg ~= nil then
             io.write(execmsg.."\n")
         end
         newstate = interpit.interp(ast, state, inputLine, outputString)
     else
-        print('-- Parse Failed.') -- Debug output   
+        --print('-- Parse Failed.') -- Debug output   
         newstate = state
     end
     return good, done, newstate
