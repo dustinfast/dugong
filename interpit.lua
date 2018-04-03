@@ -606,13 +606,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             end
         end
 
-        -- Invariant:
-        -- Curr node's val is an operator (BIN_OP or UN_OP) or
-        -- NUMLIT_VAL or BOOLIT_VAL, OR it's a STMT_LIST.
-        -- OR If it's not, we're done with the if statment,
-        -- return to take us back to doSTMT_LIST
-
-        -- handle end of statement (denoted by currCal == something other than what we expect)
+        -- If currVal is not an operator (BIN_OP or UN_OP) or
+        -- NUMLIT_VAL or BOOLIT_VAL, or STMT_LIST, we're done w the IF_STMT
         if not (currVal == BIN_OP or currVal == UN_OP or currVal == NUMLIT_VAL
                 or currVal == BOOLLIT_VAL or type(currVal) == "table") then 
                     -- print('Done w If') --debug
