@@ -210,10 +210,11 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local astParser = {} -- a list of ast parser coroutines
-    local ASTrees = {}
-    local currAST= 0 -- current AST and parser index
-    local currKey, currVal = nil -- key and val of astParser's current node.
+    local ASTParsers = {}        -- a list of ast parser coroutines
+    local ASTrees = {}           -- a list of the trees we're parsing
+    local currAST = 0            -- interpSTMT_LISTs ASTtrees/parsers index (a pos num)
+    -- local currCondAST = 0        -- interCOND_STMTs ASTtrees/parsers index (a neg num)
+    local currKey, currVal = nil -- key and val of ASTParsers's current node.
 
 
     -- interp helper funcs --
@@ -315,11 +316,11 @@ function interpit.interp(start_ast, state, incall, outcall)
 
 
     -- advanceNode
-    -- Advances astParser and assigns attributes to currKey and currVal
+    -- Advances astParse coroutine and assigns attributes to currKey and currVal
     local function advanceNode()
         if currAST <= 0 then return end
         local ok = nil
-        ok, currKey, currVal = coroutine.resume(astParser[currAST], ASTrees[currAST])          
+        ok, currKey, currVal = coroutine.resume(ASTParsers[currAST], ASTrees[currAST])          
         assert(ok)    
     end
 
@@ -463,7 +464,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             end
             no_advance = nil
             -- If coroutine dead, we're done
-            if currAST <= 0 or coroutine.status(astParser[currAST]) == 'dead' then
+            if currAST <= 0 or coroutine.status(ASTParsers[currAST]) == 'dead' then
                 break
             end
 
@@ -473,6 +474,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- call appropriate function based on currVal
             -- Invariant: If we're seeing BIN_OP or UN_OP, break
             -- because we got here from a WHILE loop
+            if currVal == STMT_LIST then advanceNode() end -- if we're here one step early
             if currVal == INPUT_STMT then no_advance = doINPUT_STMT()
             elseif currVal == PRINT_STMT then no_advance = doPRINT_STMT() 
             elseif currVal == FUNC_STMT then no_advance = doFUNC_STMT() 
@@ -480,7 +482,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif currVal == IF_STMT then no_advance = doIF_STMT() 
             elseif currVal == WHILE_STMT then no_advance = doWHILE_STMT()
             elseif currVal == ASSN_STMT then no_advance = doASSN_STMT()
-            elseif currVal == BIN_OP then no_advance = doBIN_OP() break
+            elseif currVal == BIN_OP then no_advance = doBIN_OP() 
+                print('brk doSTMT_LIST by BIN_OP\n') break
             elseif currVal == UN_OP then no_advance = doUN_OP() break
             else
                 print('ERROR: Unhandled STMT in '..debug.getinfo(1, 'n').name) -- debug) -- debug
@@ -710,17 +713,19 @@ function interpit.interp(start_ast, state, incall, outcall)
         while true do
             -- handle BIN_OP 
             if op_type == BIN_OP then 
+                print('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)
                 -- print('b: '..value..':'..astToStr(execute))  
 
             -- handle UN_OP 
             elseif op_type == UN_OP then
+                print('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)                
                 -- print('u: '..value..':'..astToStr(execute))
 
             -- handle NUMLIT and BOOLLIT 
             elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
-                value = expr[2]
+                value = expr[2] -- expr[2] because expr is of the form {'XXX_VAL', VAL}
                 -- print('l: '..value..':'..astToStr(execute))
             
             -- unhandled
@@ -729,7 +734,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             end
 
             if boolToInt(value) == 1 then
-                interpCOND_STMT(execute)
+                print('Running While body')
+                interpSTMT_LIST(execute)
             else
                 print('done w WHILE')
                 break
@@ -935,22 +941,20 @@ function interpit.interp(start_ast, state, incall, outcall)
         firstFlag[currAST] = false
         stmtList[currAST] = {}
         subtreeDone[currAST] = false
-        astParser[currAST] = coroutine.create(astParse)
+        ASTParsers[currAST] = coroutine.create(astParse)
 
-        local firstFlag = false;
-        while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
-            print('In MAIN loop #'..currAST.. ') for:') -- debug            
-            print(astToStr(ast))        -- Debug output
-            
-            if not firstFlag then advanceNode() end
-            doSTMT_LIST()
-            currAST = currAST - 1
-            firstFlag = true
-            if currAST <= 0 then break end
-        end
+        print('In MAIN loop #'..currAST.. ' for:') -- debug            
+        print(astToStr(ASTrees[currAST])) -- debug
+        local temp = currAST
+
+
+        doSTMT_LIST()
+        currAST = currAST - 1
+        print('END MAIN loop # '..temp..' Curr = '..currAST) -- debug 
     end
 
     -- similiar to above but returns a result and stops at baseAST
+    -- the index also counts on a diff var
     function interpCOND_STMT(ast, no_advance)
         print('-- Starting COND AST interp --') -- Debug output
 
@@ -963,21 +967,16 @@ function interpit.interp(start_ast, state, incall, outcall)
         firstFlag[currAST] = false
         stmtList[currAST] = nil
         subtreeDone[currAST] = false
-        astParser[currAST] = coroutine.create(astParse)
+        ASTParsers[currAST] = coroutine.create(astParse)
         
-        local firstFlag = false;
-        local result = nil;
-        while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
-            print('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
-            print(astToStr(ast))        -- Debug output
-            local temp = currAST
-            if not firstFlag and not no_advance then advanceNode() end
-            result = doSTMT_LIST()
-            currAST = currAST - 1
-            print('END COND loop # '..temp..' Curr = '..currAST) -- debug
-            firstFlag = true
-            if currAST <= baseASTCount then print('brk COND loop') break end
-        end
+        print('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
+        print(astToStr(ASTrees[currAST]))  -- debug          
+        local temp = currAST
+
+        local result = doSTMT_LIST()
+
+        currAST = currAST - 1
+        print('END COND loop # '..temp..' Curr = '..currAST) -- debug
         
         return result
     end
