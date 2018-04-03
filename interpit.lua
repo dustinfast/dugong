@@ -461,7 +461,8 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- doSTMT_LIST
     -- Loops through a statement list.
-    -- Accepts/Returns: A bool representing the results of the stmt calls, if any
+    -- Accepts: None
+    -- Returns: The results of the last stmt call (a bool), if any
     function doSTMT_LIST()
         local no_advance = nil -- container to hold statement call results
                                -- used to denote whether or not to call advanceNode()
@@ -476,10 +477,12 @@ function interpit.interp(start_ast, state, incall, outcall)
                 break
             end
 
-            -- call appropriate function based on currVal
             print('In '..debug.getinfo(1, 'n').name) --debug output
             printDebugString()  -- debug output
 
+            -- call appropriate function based on currVal
+            -- Invariant: If we're seeing BIN_OP or UN_OP, break
+            -- because we got here from a WHILE loop
             if currVal == INPUT_STMT then no_advance = doINPUT_STMT()
             elseif currVal == PRINT_STMT then no_advance = doPRINT_STMT() 
             elseif currVal == FUNC_STMT then no_advance = doFUNC_STMT() 
@@ -487,8 +490,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif currVal == IF_STMT then no_advance = doIF_STMT() 
             elseif currVal == WHILE_STMT then no_advance = doWHILE_STMT()
             elseif currVal == ASSN_STMT then no_advance = doASSN_STMT()
-            elseif currVal == BIN_OP then no_advance = doBIN_OP()
-            elseif currVal == UN_OP then no_advance = doUN_OP()
+            elseif currVal == BIN_OP then no_advance = doBIN_OP() break
+            elseif currVal == UN_OP then no_advance = doUN_OP() break
             else
                 print('ERROR: Unhandled STMT in '..debug.getinfo(1, 'n').name) -- debug) -- debug
                 printDebugString()
@@ -679,44 +682,19 @@ function interpit.interp(start_ast, state, incall, outcall)
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
-        -- local value, execute = nil
-        -- local matched = false   -- denote if we've matched a cond at this depth
 
+        local temp = {}         -- temp
+        local expr = {}         -- holds expression AST
+        local op_type = nil     -- operator type
+        local execute = nil     -- holds STMT_LIST AST
+        local value = nil       -- value after eval(expr)
 
-        -- function to call to attempt to run a STMT_LIST
-        -- only runs it if we haven't matched the if cond yet.
-        -- function runstmt(stmt_list)
-        --     if cond_hit then
-        --         -- print('cond_hit = true. SKIPPING:') --debug
-        --         print(astToStr(stmt_list))
-        --     else
-        --         -- print('cond_hit = false. RUNNING.') --debug
-        --         interpCOND_STMT(stmt_list)
-        --     end
-        -- end
-
-        -- -- If currVal is not an operator (BIN_OP or UN_OP) or
-        -- -- NUMLIT_VAL or BOOLIT_VAL, we're done w the loop
-        -- if not (currVal == BIN_OP or currVal == UN_OP or currVal == NUMLIT_VAL
-        --         or currVal == BOOLLIT_VAL) then 
-        --             print('Done w While') --debug
-        --             return end
-        
-        local temp = {}
-        local expr = {}
-        local op_type = nil
-        local op_set = nil
-        local execute = nil
-        local value = nil
-
-        -- build a STMT_LIST AST for the expression from next vals,
+        -- build an AST for the expression from next vals,
         -- noting the operator type when we see it.
         while true do
-            -- printDebugString()
             if currKey == CONST then
-                if not op_set then 
+                if not op_type then 
                     op_type = currVal 
-                    op_set = true
                 end
                 table.insert(temp, currVal)
             elseif currKey == STR or currKey == BOOL then
@@ -767,20 +745,6 @@ function interpit.interp(start_ast, state, incall, outcall)
                 break
             end
         end
-        -- -- handle STMT_LIST, i.e the if's "else" branch
-        -- elseif type(currVal) == "table" then
-        --     value = 1 -- set to true so execute gets done if we haven't matched
-        --     execute = currVal
-        --     -- print('e: '..value..':'..astToStr(execute))
-
-        
-        -- Process the rest of the if stmt recursively, passing if
-        -- we have matched a cond (either in this iteration or previously)
-        -- doIF_STMT((matched or cond_hit))
-
-        -- return true to tell do_STMT_LIST not to advanceNode()
-        -- (because we did it in this function already)
-        -- return true 
     end
 
     
@@ -966,7 +930,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             result = value
         end
 
-        -- print('UN_OP results: '..operator..value..' = '..result) -- debug
+        print('UN_OP results: '..operator..value..' = '..result) -- debug
         return result
     end
 
@@ -1027,16 +991,15 @@ function interpit.interp(start_ast, state, incall, outcall)
             firstFlag = true
             if currAST <= baseASTCount then break end
         end
+        
         return result
     end
 
 
-
-
     -- interp function body --
     ---------------------------
-    -- The root node is a STMT_LIST, start the interp process on it.
-    -- After processing, return the state table
+    -- The current node is the root STMT_LIST, 
+    -- Process it, then return the state table
     interpSTMT_LIST(start_ast) 
     return state                
 end
