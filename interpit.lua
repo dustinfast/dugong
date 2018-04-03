@@ -219,7 +219,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- interp helper funcs --
     -------------------------
 
-    -- iterateSubtree
+    -- astParse
     -- A recursive coroutine yielding node values via inorder traversal
     -- Used by interpit.interp
     -- Accepts: An AST node (may be root) in table form.
@@ -234,9 +234,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- to maintain info for different coroutine instances
     local firstFlag = {} -- denotes the initial STMT_LIST has been encountered
     local stmtList = {} -- container to hold STMT_LISTs
-    local ifList = {}   -- container to hold IF_STMTs
     local subtreeDone = {}  -- denotes an intact STMT_LIST was yielded
-    local function iterateSubtree(node)
+    local function astParse(node)
         -- If node is a symbolic constant:
         if type(node) == 'number' then        
             local name = symbolNames[node]
@@ -259,17 +258,6 @@ function interpit.interp(start_ast, state, incall, outcall)
                         firstFlag[currAST] = true
                         coroutine.yield(CONST, node)    
                     end
-                    
-                -- if IF_STMT node, return the node, then on the next call return
-                -- the IF_STMT subtree intact
-                -- elseif node == IF_STMT then
-                --     if ifList[currAST] then
-                --         print('IF_STMT ast served')
-                --         coroutine.yield(CONST, node)
-                --         coroutine.yield(SUBTREE, ifList[currAST])
-                --         ifList[currAST] = nil
-                --         subtreeDone[currAST] = true
-                --     end
                 else
                     coroutine.yield(CONST, node)    
                 end
@@ -306,11 +294,11 @@ function interpit.interp(start_ast, state, incall, outcall)
                 end
                 
                 -- recursively parse next node
-                iterateSubtree(node[i]) 
+                astParse(node[i]) 
 
                 -- if we last yielded a STMT_LIST, break out of the current subtree
                 if subtreeDone[currAST] then 
-                    --print('brk') -- debug
+                    print('brk subtree') -- debug
                     subtreeDone[currAST] = false 
                     return 
                 end
@@ -324,6 +312,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             coroutine.yield(ERROR, 'Invalid type encountered: '..type(node))
         end
     end
+
+
     -- advanceNode
     -- Advances astParser and assigns attributes to currKey and currVal
     local function advanceNode()
@@ -349,7 +339,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         if type(val) == 'table' then
             print(astToStr(val))
         else
-            print('{ '..key..', '..val..' }')
+            print('{ '..key..', '..val..' } (currAST = '..currAST..')')
         end
         io.read('*l') -- pause
     end
@@ -792,11 +782,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- doBIN_OP
     -- Accepts: None
     -- Returns: Result of operation 1 or 0 for boolean operators, else an int
-    n = 0
     function doBIN_OP()        
-        n = n+1
         advanceNode()
-        print('In ('..n..'): '..debug.getinfo(1, 'n').name) --debug output
+        print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
         local name, index = nil   -- temp vars
@@ -876,8 +864,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- put bools in str form?
         if result == true then result = 'true'
         elseif result == false then result = 'false'end
-        local disp = result -- debug
-        print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
+        -- local disp = result -- debug
+        -- print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
 
@@ -885,11 +873,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- doUN_OP
     -- Accepts: None
     -- Returns: Result of operation - 1 or 0 for boolean operators, else an int
-    m = 0
     function doUN_OP()        
-        m = m+1
         advanceNode()
-        print('In ('..m..'): '..debug.getinfo(1, 'n').name) --debug output
+        print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
         local name, index               -- temp
@@ -941,21 +927,21 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- from any other func that encounters a STMT_LIST
     -- Acccepts: an AST node of type STMT_LIST
     function interpSTMT_LIST(ast)
-        print('-- Processing AST:') -- Debug output
-        print(astToStr(ast))        -- Debug output
+        print('-- Starting MAIN AST interp --') -- Debug output
 
         -- increase ast parser count by 1 and init ast parser coroutine
         currAST = currAST + 1
         ASTrees[currAST] = ast
         firstFlag[currAST] = false
         stmtList[currAST] = {}
-        ifList[currAST] = nil
         subtreeDone[currAST] = false
-        astParser[currAST] = coroutine.create(iterateSubtree)
+        astParser[currAST] = coroutine.create(astParse)
 
         local firstFlag = false;
         while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
-            print('In main loop # '..currAST) -- debug
+            print('In MAIN loop #'..currAST.. ') for:') -- debug            
+            print(astToStr(ast))        -- Debug output
+            
             if not firstFlag then advanceNode() end
             doSTMT_LIST()
             currAST = currAST - 1
@@ -966,8 +952,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- similiar to above but returns a result and stops at baseAST
     function interpCOND_STMT(ast, no_advance)
-        print('-- Processing COND AST:') -- Debug output
-        print(astToStr(ast))        -- Debug output
+        print('-- Starting COND AST interp --') -- Debug output
 
         -- note currAST count. We will break when we hit it
         local baseASTCount = currAST
@@ -977,19 +962,21 @@ function interpit.interp(start_ast, state, incall, outcall)
         ASTrees[currAST] = ast
         firstFlag[currAST] = false
         stmtList[currAST] = nil
-        ifList[currAST] = nil
         subtreeDone[currAST] = false
-        astParser[currAST] = coroutine.create(iterateSubtree)
+        astParser[currAST] = coroutine.create(astParse)
         
         local firstFlag = false;
         local result = nil;
         while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
-            print('In COND loop # '..currAST) -- debug
+            print('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
+            print(astToStr(ast))        -- Debug output
+            local temp = currAST
             if not firstFlag and not no_advance then advanceNode() end
             result = doSTMT_LIST()
             currAST = currAST - 1
+            print('END COND loop # '..temp..' Curr = '..currAST) -- debug
             firstFlag = true
-            if currAST <= baseASTCount then break end
+            if currAST <= baseASTCount then print('brk COND loop') break end
         end
         
         return result
