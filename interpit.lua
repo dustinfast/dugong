@@ -517,7 +517,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns:None
     function doPRINT_STMT()
         advanceNode()
-        print('A - In '..debug.getinfo(1, 'n').name) --debug output
+        print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
         
         -- handle CR_OUT (Print out a CR)
@@ -683,7 +683,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         local value = nil       -- value after eval(expr)
 
         -- build an AST for the expression from next vals,
-        -- noting the operator type when we see it.
+        -- noting the operator type when we see it (it's  the currVal).
         while true do
             if currKey == CONST then
                 if not op_type then 
@@ -703,12 +703,12 @@ function interpit.interp(start_ast, state, incall, outcall)
         execute = currVal
         
         -- debug
-        -- print('while expr: '..op_type)
-        -- print(astToStr(expr))
-        -- print('\n')
-        -- print(astToStr(execute))
-        -- print('\n')
-        -- printDebugString()
+        print('while expr: '..op_type)
+        print(astToStr(expr))
+        print('\n')
+        print(astToStr(execute))
+        print('\n')
+        printDebugString()
 
         while true do
             -- handle BIN_OP 
@@ -725,8 +725,9 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             -- handle NUMLIT and BOOLLIT 
             elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
-                value = expr[2] -- expr[2] because expr is of the form {'XXX_VAL', VAL}
-                -- print('l: '..value..':'..astToStr(execute))
+                print(astToStr(expr))
+                value = expr[1][2] -- because expr is of the form ({TYPE, VALUE}}
+                print('l: '..value..':'..astToStr(execute))
             
             -- unhandled
             else
@@ -855,7 +856,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         elseif operator == '<' then
             if lvalue < rvalue then result = true end
         elseif operator == '<=' then
-            if lvalue >= rvalue then result = true end
+            if lvalue <= rvalue then result = true end
         elseif operator == '>' then
             if lvalue > rvalue then result = true end
         elseif operator == '>=' then
@@ -867,11 +868,10 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('Unhandled operator encountered: '..operator)
         end
 
-        -- put bools in str form?
+        -- put bools in str form for debug display
         if result == true then result = 'true'
         elseif result == false then result = 'false'end
-        -- local disp = result -- debug
-        -- print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
+        print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
 
