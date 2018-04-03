@@ -211,7 +211,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = false
+    local debugmode = true
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
     local currAST = 0            -- ASTtrees/parsers index (a pos num)
@@ -342,7 +342,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- advanceNode
     -- Advances astParse coroutine and assigns attributes to currKey and currVal
     local function advanceNode()
-        if currAST <= 0 then return end
+        if currAST <= 0  or coroutine.status(ASTParsers[currAST]) == 'dead' then
+        printDebug('Parser '..currAST..' dead') return end
+        
         local ok = nil
         ok, currKey, currVal = coroutine.resume(ASTParsers[currAST], ASTrees[currAST])          
         assert(ok)    
@@ -520,27 +522,48 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doPRINT_STMT()
         advanceNode()
         
+        -- strip leading/trailing quotes if necessary and do outcall
+        function doOutcall(str)
+            if (str:sub(1,1) == '"' and str:sub(#str, #str) == '"')
+            or (str:sub(1,1) == "'" and str:sub(#str, #str) == "'")
+            then str = str:sub(2, #str-1) end
+
+            outcall(str)
+        end
+
         while true do
             printDebug('In '..debug.getinfo(1, 'n').name) --debug output
             printDebug()  -- debug output
             
             -- handle CR_OUT (Print out a CR)
             if currVal == CR_OUT then
-                outcall('\n')
+                doOutcall('\n')
 
             -- handle STRLIT_OUT 
             elseif currVal == STRLIT_OUT then
                 -- next val is string to output
                 advanceNode()
-                outcall(currVal)
+                doOutcall(currVal)
+
+            -- handle NUMIT_VAL 
+            elseif currVal == NUMLIT_VAL then
+                -- next val is string to output
+                advanceNode()
+                doOutcall(currVal)
+
+            -- handle BOOLLIT_VAL 
+            elseif currVal == BOOLLIT_VAL then
+                -- next val is string to output
+                advanceNode()
+                doOutcall(currVal)
 
             -- handle BIN_OP
             elseif currVal == BIN_OP then
-                outcall(doBIN_OP())
+                doOutcall(doBIN_OP())
 
             -- handle UN_OP
             elseif currVal == UN_OP then
-                outcall(doUN_OP())
+                doOutcall(doUN_OP())
             
             -- handle SIMPLE_VAR and ARRAY_VAR
             elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
@@ -550,7 +573,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- handle CALL_FUNC
             elseif currVal == CALL_FUNC then 
                 doCALL_FUNC(true)
-                outcall(getVar('return', SIMPLE_VAR))
+                doOutcall(getVar('return', SIMPLE_VAR))
 
             -- unhandled
             else
@@ -558,11 +581,13 @@ function interpit.interp(start_ast, state, incall, outcall)
                 printDebug()
             end
 
-            -- peak at next node to see if it's another parg, else return
+            -- peak at next node. if not another p arg, return
             advanceNode()
+            printDebug()
             if not (currVal == CR_OUT or currVal == STRLIT_OUT
             or currVal == BIN_OP or currVal == UN_OP
             or currVal == SIMPLE_VAR or currVal == ARRAY_VAR
+            or currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL 
             or currVal == CALL_FUNC)
             then 
                 return true -- true, since we peaked at next node
