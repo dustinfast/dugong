@@ -211,7 +211,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = true
+    local debugmode = false
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
     local currAST = 0            -- ASTtrees/parsers index (a pos num)
@@ -524,9 +524,11 @@ function interpit.interp(start_ast, state, incall, outcall)
         
         -- strip leading/trailing quotes if necessary and do outcall
         function doOutcall(str)
-            if (str:sub(1,1) == '"' and str:sub(#str, #str) == '"')
-            or (str:sub(1,1) == "'" and str:sub(#str, #str) == "'")
-            then str = str:sub(2, #str-1) end
+            if type(str) == 'string' then
+                if (str:sub(1,1) == '"' and str:sub(#str, #str) == '"')
+                or (str:sub(1,1) == "'" and str:sub(#str, #str) == "'")
+                then str = str:sub(2, #str-1) end
+            end
 
             outcall(str)
         end
