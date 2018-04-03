@@ -122,7 +122,6 @@ end
 -- convertVal
 -- Given a variable type and val, returns value in correct form
 local function convertVal(type, value)
-    -- print('Converting: '..type..':'..value) -- debug
     if type == BOOLLIT_VAL then return boolToInt(value)
     elseif type == NUMLIT_VAL then return strToNum(value)
     else
@@ -204,21 +203,44 @@ end
 --             - incall() inputs line, returns string with no newline
 --   outcall - Function to call for string output
 --             - outcall(str) outputs str with no added newline
---             - To print a newline, do outcall('\n')
+--             - To output a newline, do outcall('\n')
 -- Returns: state, updated with new and/or updated variable values
 function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
+    local debugmode = false
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
-    local currAST = 0            -- interpSTMT_LISTs ASTtrees/parsers index (a pos num)
-    -- local currCondAST = 0        -- interCOND_STMTs ASTtrees/parsers index (a neg num)
-    local currKey, currVal = nil -- key and val of ASTParsers's current node.
+    local currAST = 0            -- ASTtrees/parsers index (a pos num)
+    local currKey, currVal = nil -- key and val of ASTParsers[currVal]'s current node.
 
 
     -- interp helper funcs --
     -------------------------
+
+    -- printDebug
+    -- prints debug info if in debug mode
+    local function printDebug(str)
+        if debugmode then
+            local key, val = nil
+            if currKey == nil then key = "nil" 
+            else key = astNames[currKey] end
+
+            if currVal == nil then val = "nil" 
+            elseif currKey == CONST then
+                val = symbolNames[currVal]
+            else val = currVal end
+
+            if type(val) == 'table' then
+                print(astToStr(val))
+            else
+                if str then print(str) end
+                print('{ '..key..', '..val..' } (currAST = '..currAST..')')
+            end
+            io.read('*l') -- pause
+        end
+    end
 
     -- astParse
     -- A recursive coroutine yielding node values via inorder traversal
@@ -249,7 +271,7 @@ function interpit.interp(start_ast, state, incall, outcall)
                 -- If it is the first one, we set firstFlag to denote it's been seen.
                 if node == STMT_LIST then
                     if firstFlag[currAST]then
-                        -- print('ast served')
+                        -- printDebug('ast served')
                         -- coroutine.yield(SUBTREE, stmtList[currAST])
                         coroutine.yield(SUBTREE, table.remove(stmtList[currAST]))
                         --stmtList[currAST] = nil
@@ -266,7 +288,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             
         -- If node is a string value:
         elseif type(node) == 'string' then
-            -- print('string')
+            -- printDebug('string')
             coroutine.yield(STR, node)
         
         -- If node is a bool value:
@@ -282,14 +304,14 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- If node is a table, do recursive call to parse it:
         elseif type(node) == 'table' then
             for i = 1, #node do  
-                -- print('table')
+                -- printDebug('table')
 
                 -- If second next node is stmt list, 
                 -- save it to return later intact
                 if (i+1) <= #node then
                     if firstFlag[currAST] and (i+1) <= #node and node[i+1][1] == STMT_LIST then
                         -- stmtList[currAST] = node[i+1]                        
-                        -- print('ast saved: '..astToStr(node[i+1])..'\n') --debug
+                        -- printDebug('ast saved: '..astToStr(node[i+1])..'\n') --debug
                         table.insert(stmtList[currAST], 1, node[i+1])
                     end
                 end
@@ -299,7 +321,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
                 -- if we last yielded a STMT_LIST, break out of the current subtree
                 if subtreeDone[currAST] then 
-                    print('brk subtree') -- debug
+                    printDebug('brk subtree') -- debug
                     subtreeDone[currAST] = false 
                     return 
                 end
@@ -325,28 +347,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
 
-    -- printDebugString
-    -- prints the current key/value in a conveient form. For debug.
-    local function printDebugString(str)
-        local key, val = nil
-        if currKey == nil then key = "nil" 
-        else key = astNames[currKey] end
-
-        if currVal == nil then val = "nil" 
-        elseif currKey == CONST then
-            val = symbolNames[currVal]
-        else val = currVal end
-
-        if type(val) == 'table' then
-            print(astToStr(val))
-        else
-            if str then print(str) end
-            print('{ '..key..', '..val..' } (currAST = '..currAST..')')
-        end
-        io.read('*l') -- pause
-    end
-
-
     -- setVar
     -- Called to set a varable of the given name/type to the given value
     -- Accepts: name  = Variable name
@@ -358,7 +358,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     local function setVar(name, type, value, valtype, index)
         if type == SIMPLE_VAR then
             state.v[name] = convertVal(valtype, value)
-            print('Assigned '..name..' = '..value) -- debug
+            printDebug('Assigned '..name..' = '..value) -- debug
 
         elseif type == ARRAY_VAR then
             -- If state.a[name] doesn't exit, create it
@@ -367,11 +367,11 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             -- insert new value
             state.a[name][index] = convertVal(valtype, value)
-            print('Assigned '..name..'['..index..'] = '..value) -- debug   
+            printDebug('Assigned '..name..'['..index..'] = '..value) -- debug   
         
         elseif type == FUNC_STMT then
             state.f[name] = value
-            print('Assigned '..name..' = \n'..astToStr(state.f[name])) -- debug
+            printDebug('Assigned '..name..' = \n'..astToStr(state.f[name])) -- debug
         
         else
             if not index then index = 'nil' end -- debug
@@ -469,8 +469,8 @@ function interpit.interp(start_ast, state, incall, outcall)
                 break
             end
 
-            print('In '..debug.getinfo(1, 'n').name) --debug output
-            printDebugString()  -- debug output
+            printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+            printDebug()  -- debug output
 
             -- call appropriate function based on currVal
             -- Invariant: If we're seeing BIN_OP or UN_OP, break
@@ -483,12 +483,11 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif currVal == IF_STMT then no_advance = doIF_STMT() 
             elseif currVal == WHILE_STMT then no_advance = doWHILE_STMT()
             elseif currVal == ASSN_STMT then no_advance = doASSN_STMT()
-            elseif currVal == BIN_OP then no_advance = doBIN_OP() 
-                print('brk doSTMT_LIST by BIN_OP\n') break
+            elseif currVal == BIN_OP then no_advance = doBIN_OP() break
             elseif currVal == UN_OP then no_advance = doUN_OP() break
             else
                 print('ERROR: Unhandled STMT in '..debug.getinfo(1, 'n').name) -- debug) -- debug
-                printDebugString()
+                printDebug()
             end
         end
 
@@ -501,8 +500,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: None
     function doINPUT_STMT()
         advanceNode()
-        -- print('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        -- printDebug()  -- debug output
 
         -- get var attributes
         local name, type, index = parseVar()
@@ -520,8 +519,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         advanceNode()
         
         while true do
-            print('In '..debug.getinfo(1, 'n').name) --debug output
-            printDebugString()  -- debug output
+            printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+            printDebug()  -- debug output
             
             -- handle CR_OUT (Print out a CR)
             if currVal == CR_OUT then
@@ -529,7 +528,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             -- handle STRLIT_OUT 
             elseif currVal == STRLIT_OUT then
-                -- next val is string to print
+                -- next val is string to output
                 advanceNode()
                 outcall(currVal)
 
@@ -554,10 +553,10 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- unhandled
             else
                 print('ERROR: Unhandled case encountered in '..debug.getinfo(1, 'n').name) -- debug
-                printDebugString()
+                printDebug()
             end
 
-            -- peak at next node to see if it's a print arg, else return
+            -- peak at next node to see if it's another parg, else return
             advanceNode()
             if not (currVal == CR_OUT or currVal == STRLIT_OUT
             or currVal == BIN_OP or currVal == UN_OP
@@ -575,8 +574,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: None
     function doFUNC_STMT()
         advanceNode()
-        -- print('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        -- printDebug()  -- debug output
 
         -- curr val is func name, then next is functions body (an AST)
         local name = currVal
@@ -593,8 +592,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: None
     function doCALL_FUNC()
         advanceNode()
-        -- print('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        -- printDebug()  -- debug output
 
         -- curr val is func name, get its ast and parse it
         local ast = getVar(currVal, FUNC_STMT)
@@ -608,8 +607,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Returns: True (necessary to tell caller not to advanceNode()
     function doIF_STMT(cond_hit)
         advanceNode()
-        print('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebugString()  -- debug output
+        printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebug()  -- debug output
         local value, execute = nil
         local matched = false   -- denote if we've matched a cond at this depth
 
@@ -617,10 +616,10 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- only runs it if we haven't matched the if cond yet.
         function runstmt(stmt_list)
             if cond_hit then
-                -- print('cond_hit = true. SKIPPING:') --debug
-                print(astToStr(stmt_list))
+                -- printDebug('cond_hit = true. SKIPPING:') --debug
+                -- printDebug(astToStr(stmt_list))
             else
-                -- print('cond_hit = false. RUNNING.') --debug
+                -- printDebug('cond_hit = false. RUNNING.') --debug
                 interpCOND_STMT(stmt_list)
             end
         end
@@ -629,7 +628,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- NUMLIT_VAL or BOOLIT_VAL, or STMT_LIST, we're done w the IF_STMT
         if not (currVal == BIN_OP or currVal == UN_OP or currVal == NUMLIT_VAL
                 or currVal == BOOLLIT_VAL or type(currVal) == "table") then 
-                    -- print('Done w If') --debug
+                    -- printDebug('Done w If') --debug
                     return end
 
         -- handle BIN_OP 
@@ -637,44 +636,44 @@ function interpit.interp(start_ast, state, incall, outcall)
             value = doBIN_OP()
             advanceNode()
             execute = currVal
-            -- print('b: '..value..':'..astToStr(execute))  
+            -- printDebug('b: '..value..':'..astToStr(execute))  
 
         -- handle UN_OP 
         elseif currVal == UN_OP then
             value = doUN_OP()   
             advanceNode()
             execute = currVal
-            -- print('u: '..value..':'..astToStr(execute))
+            -- printDebug('u: '..value..':'..astToStr(execute))
 
         -- handle NUMLIT and BOOLLIT 
         elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
             advanceNode()
             value = currVal
-            -- print('comparing '..value) -- debug
+            -- printDebug('comparing '..value) -- debug
             advanceNode()
             execute = currVal
-            -- print('l: '..value..':'..astToStr(execute))
+            -- printDebug('l: '..value..':'..astToStr(execute))
 
         -- handle STMT_LIST, i.e the if's "else" branch
         elseif type(currVal) == "table" then
             value = 1 -- set to true so execute gets done if we haven't matched
             execute = currVal
-            -- print('e: '..value..':'..astToStr(execute))
+            -- printDebug('e: '..value..':'..astToStr(execute))
 
         -- unhandled
         else
-            print('Unhandled value in IF_STMT: '..currVal)
+            print('ERROR: Unhandled value in IF_STMT: '..currVal)
         end
 
         -- Do the correct action based on value (assigned above)
         if boolToInt(value) == 1 then 
-            -- print('eval TRUE -')
+            -- printDebug('eval TRUE -')
             matched = true
             runstmt(execute)
         -- else
-        --     print ('eval FALSE -')
-        --     print('Skipping:')
-        --     print(astToStr(execute))
+        --     printDebug ('eval FALSE -')
+        --     printDebug('Skipping:')
+        --     printDebug(astToStr(execute))
         end
 
         -- Process the rest of the if stmt recursively, passing if
@@ -692,8 +691,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: None
     function doWHILE_STMT()
         advanceNode()
-        print('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebugString()  -- debug output
+        printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebug()  -- debug output
 
         local temp = {}         -- temp
         local expr = {}         -- holds expression AST
@@ -722,42 +721,42 @@ function interpit.interp(start_ast, state, incall, outcall)
         execute = currVal
         
         -- debug
-        -- print('while expr: '..op_type)
-        -- print(astToStr(expr))
-        -- print('\n')
-        -- print(astToStr(execute))
-        -- print('\n')
-        -- printDebugString()
+        -- printDebug('while expr: '..op_type)
+        -- printDebug(astToStr(expr))
+        -- printDebug('\n')
+        -- printDebug(astToStr(execute))
+        -- printDebug('\n')
+        -- printDebug()
 
         while true do
             -- handle BIN_OP 
             if op_type == BIN_OP then 
-                -- print('Starting While expr eval')
+                -- printDebug('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)
-                -- print('b: '..value..':'..astToStr(execute))  
+                -- printDebug('b: '..value..':'..astToStr(execute))  
 
             -- handle UN_OP 
             elseif op_type == UN_OP then
-                -- print('Starting While expr eval')
+                -- printDebug('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)                
-                -- print('u: '..value..':'..astToStr(execute))
+                -- printDebug('u: '..value..':'..astToStr(execute))
 
             -- handle NUMLIT and BOOLLIT 
             elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
-                -- print(astToStr(expr))
+                -- printDebug(astToStr(expr))
                 value = expr[1][2] -- because expr is of the form ({TYPE, VALUE}}
-                print('l: '..value..':'..astToStr(execute))
+                -- printDebug('l: '..value..':'..astToStr(execute))
             
             -- unhandled
             else
-                print('Unhandled optype in WHILE_STMT: '..op_type)
+                print('ERROR: Unhandled optype in WHILE_STMT: '..op_type)
             end
 
             if boolToInt(value) == 1 then
-                -- print('Running While body')
+                -- printDebug('Running While body')
                 interpSTMT_LIST(execute)
             else
-                -- print('done w WHILE')
+                -- printDebug('done w WHILE')
                 break
             end
         end
@@ -769,8 +768,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns: None
     function doASSN_STMT()
         advanceNode()
-        -- print('In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        -- printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        -- printDebug()  -- debug output
 
         -- Get var attributes
         local name, type, index = parseVar()
@@ -810,8 +809,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Returns: Result of operation 1 or 0 for boolean operators, else an int
     function doBIN_OP()        
         advanceNode()
-        print('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebugString()  -- debug output
+        printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebug()  -- debug output
 
         local name, index = nil   -- temp vars
         local lvalue, ltype = nil       -- left operand
@@ -859,8 +858,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('ERROR: Unhandled value in BIN_OP rvalue'..curVal)
         end
 
-        -- print(lvalue) --debug
-        -- print(rvalue) --debug
+        -- printDebug(lvalue) --debug
+        -- printDebug(rvalue) --debug
         
         -- Necessary nodes processed, determine result and return.
         local result = false
@@ -884,13 +883,13 @@ function interpit.interp(start_ast, state, incall, outcall)
                 operator == '*' or operator == '/' or
                 operator == '%' then result = evalArith(lvalue, rvalue, operator)
         else
-            print('Unhandled operator encountered: '..operator)
+            print('ERROR: Unhandled operator encountered: '..operator)
         end
 
         -- put bools in str form for debug display
         if result == true then result = 'true'
         elseif result == false then result = 'false'end
-        print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
+        printDebug('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
 
@@ -900,8 +899,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Returns: Result of operation - 1 or 0 for boolean operators, else an int
     function doUN_OP()        
         advanceNode()
-        print('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebugString()  -- debug output
+        printDebug('In '..debug.getinfo(1, 'n').name) --debug output
+        printDebug()  -- debug output
 
         local name, index               -- temp
         local value, type, result = nil -- operand
@@ -941,7 +940,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             result = value
         end
 
-        print('UN_OP results: '..operator..value..' = '..result) -- debug
+        printDebug('UN_OP results: '..operator..value..' = '..result) -- debug
         return result
     end
 
@@ -952,7 +951,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- from any other func that encounters a STMT_LIST
     -- Acccepts: an AST node of type STMT_LIST
     function interpSTMT_LIST(ast)
-        print('-- Starting MAIN AST interp --') -- Debug output
+        printDebug('-- Starting MAIN AST interp --') -- Debug output
 
         -- increase ast parser count by 1 and init ast parser coroutine
         currAST = currAST + 1
@@ -962,20 +961,20 @@ function interpit.interp(start_ast, state, incall, outcall)
         subtreeDone[currAST] = false
         ASTParsers[currAST] = coroutine.create(astParse)
 
-        print('In MAIN loop #'..currAST.. ' for:') -- debug            
-        print(astToStr(ASTrees[currAST])) -- debug
+        printDebug('In MAIN loop #'..currAST.. ' for:') -- debug            
+        printDebug(astToStr(ASTrees[currAST])) -- debug
         local temp = currAST
 
 
         doSTMT_LIST()
         currAST = currAST - 1
-        print('END MAIN loop # '..temp..' Curr = '..currAST) -- debug 
+        printDebug('END MAIN loop # '..temp..' Curr = '..currAST) -- debug 
     end
 
     -- similiar to above but returns a result and stops at baseAST
     -- the index also counts on a diff var
     function interpCOND_STMT(ast, no_advance)
-        print('-- Starting COND AST interp --') -- Debug output
+        printDebug('-- Starting COND AST interp --') -- Debug output
 
         -- note currAST count. We will break when we hit it
         local baseASTCount = currAST
@@ -988,14 +987,14 @@ function interpit.interp(start_ast, state, incall, outcall)
         subtreeDone[currAST] = false
         ASTParsers[currAST] = coroutine.create(astParse)
         
-        print('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
-        print(astToStr(ASTrees[currAST]))  -- debug          
+        printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for:') -- debug
+        printDebug(astToStr(ASTrees[currAST]))  -- debug          
         local temp = currAST
 
         local result = doSTMT_LIST()
 
         currAST = currAST - 1
-        print('END COND loop # '..temp..' Curr = '..currAST) -- debug
+        printDebug('END COND loop # '..temp..' Curr = '..currAST) -- debug
         
         return result
     end
