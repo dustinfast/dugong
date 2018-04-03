@@ -36,6 +36,22 @@
 -- (G23):  	|  	lvalue
 -- (G24): lvalue  ->  ID [ '[' expr ']' ]
 
+-- local STMT_LIST   = 1
+-- *local INPUT_STMT  = 2
+-- *local PRINT_STMT  = 3
+-- *local FUNC_STMT   = 4
+-- *local CALL_FUNC   = 5
+-- *local IF_STMT     = 6
+-- local WHILE_STMT  = 7
+-- *local ASSN_STMT   = 8
+-- *local CR_OUT      = 9
+-- *local STRLIT_OUT  = 10
+-- *local BIN_OP      = 11
+-- *local UN_OP       = 12
+-- *local NUMLIT_VAL  = 13
+-- *local BOOLLIT_VAL = 14
+-- *local SIMPLE_VAR  = 15
+-- *local ARRAY_VAR   = 16
 
 -----------------------
 -- AST Specification --
@@ -226,7 +242,7 @@ end
 -- reached the end of the input or not. AST is only valid if first
 -- boolean is true.
 function parseit.parse(progstr)
-    print('-- Parsing...') -- Debug output
+    -- print('-- Parsing...') -- Debug output
     init(progstr) -- init parser
     local pvalid, ast = parse_program()  -- Parse start symbol
     --writeAST(ast) -- Debug output
