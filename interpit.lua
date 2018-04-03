@@ -327,7 +327,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- printDebugString
     -- prints the current key/value in a conveient form. For debug.
-    local function printDebugString()
+    local function printDebugString(str)
         local key, val = nil
         if currKey == nil then key = "nil" 
         else key = astNames[currKey] end
@@ -340,6 +340,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         if type(val) == 'table' then
             print(astToStr(val))
         else
+            if str then print(str) end
             print('{ '..key..', '..val..' } (currAST = '..currAST..')')
         end
         io.read('*l') -- pause
@@ -517,36 +518,54 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns:None
     function doPRINT_STMT()
         advanceNode()
-        print('In '..debug.getinfo(1, 'n').name) --debug output
-        printDebugString()  -- debug output
         
-        -- handle CR_OUT (Print out a CR)
-        if currVal == CR_OUT then
-            outcall('\n')
+        while true do
+            print('In '..debug.getinfo(1, 'n').name) --debug output
+            printDebugString()  -- debug output
+            
+            -- handle CR_OUT (Print out a CR)
+            if currVal == CR_OUT then
+                outcall('\n')
 
-        -- handle STRLIT_OUT 
-        elseif currVal == STRLIT_OUT then
-            -- next val is string to print
+            -- handle STRLIT_OUT 
+            elseif currVal == STRLIT_OUT then
+                -- next val is string to print
+                advanceNode()
+                outcall(currVal)
+
+            -- handle BIN_OP
+            elseif currVal == BIN_OP then
+                outcall(doBIN_OP())
+
+            -- handle UN_OP
+            elseif currVal == UN_OP then
+                outcall(doUN_OP())
+            
+            -- handle SIMPLE_VAR and ARRAY_VAR
+            elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
+                local name, type, value, index = parseAndGetVar()
+                outcall(value)
+
+            -- handle CALL_FUNC
+            elseif currVal == CALL_FUNC then 
+                doCALL_FUNC(true)
+                outcall(getVar('return', SIMPLE_VAR))
+
+            -- unhandled
+            else
+                print('ERROR: Unhandled case encountered in '..debug.getinfo(1, 'n').name) -- debug
+                printDebugString()
+            end
+
+            -- peak at next node to see if it's a print arg, else return
             advanceNode()
-            outcall(currVal)
-
-        -- handle BIN_OP
-        elseif currVal == BIN_OP then
-            outcall(doBIN_OP())
-
-        -- handle UN_OP
-        elseif currVal == UN_OP then
-            outcall(doUN_OP())
-        
-        -- handle SIMPLE_VAR and ARRAY_VAR
-        elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
-            local name, type, value, index = parseAndGetVar()
-            outcall(value)
-
-        -- unhandled
-        else
-            print('ERROR: Unhandled case encountered in '..debug.getinfo(1, 'n').name) -- debug
-            printDebugString()
+            if not (currVal == CR_OUT or currVal == STRLIT_OUT
+            or currVal == BIN_OP or currVal == UN_OP
+            or currVal == SIMPLE_VAR or currVal == ARRAY_VAR
+            or currVal == CALL_FUNC)
+            then 
+                return true -- true, since we peaked at next node
+            end
         end
     end
 
@@ -703,29 +722,29 @@ function interpit.interp(start_ast, state, incall, outcall)
         execute = currVal
         
         -- debug
-        print('while expr: '..op_type)
-        print(astToStr(expr))
-        print('\n')
-        print(astToStr(execute))
-        print('\n')
-        printDebugString()
+        -- print('while expr: '..op_type)
+        -- print(astToStr(expr))
+        -- print('\n')
+        -- print(astToStr(execute))
+        -- print('\n')
+        -- printDebugString()
 
         while true do
             -- handle BIN_OP 
             if op_type == BIN_OP then 
-                print('Starting While expr eval')
+                -- print('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)
                 -- print('b: '..value..':'..astToStr(execute))  
 
             -- handle UN_OP 
             elseif op_type == UN_OP then
-                print('Starting While expr eval')
+                -- print('Starting While expr eval')
                 value = interpCOND_STMT(expr, true)                
                 -- print('u: '..value..':'..astToStr(execute))
 
             -- handle NUMLIT and BOOLLIT 
             elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
-                print(astToStr(expr))
+                -- print(astToStr(expr))
                 value = expr[1][2] -- because expr is of the form ({TYPE, VALUE}}
                 print('l: '..value..':'..astToStr(execute))
             
@@ -735,10 +754,10 @@ function interpit.interp(start_ast, state, incall, outcall)
             end
 
             if boolToInt(value) == 1 then
-                print('Running While body')
+                -- print('Running While body')
                 interpSTMT_LIST(execute)
             else
-                print('done w WHILE')
+                -- print('done w WHILE')
                 break
             end
         end
