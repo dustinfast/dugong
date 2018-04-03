@@ -461,7 +461,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- doSTMT_LIST
     -- Loops through a statement list.
-    -- Accepts/Returns: None
+    -- Accepts/Returns: A bool representing the results of the stmt calls, if any
     function doSTMT_LIST()
         local no_advance = nil -- container to hold statement call results
                                -- used to denote whether or not to call advanceNode()
@@ -487,11 +487,15 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif currVal == IF_STMT then no_advance = doIF_STMT() 
             elseif currVal == WHILE_STMT then no_advance = doWHILE_STMT()
             elseif currVal == ASSN_STMT then no_advance = doASSN_STMT()
+            elseif currVal == BIN_OP then no_advance = doBIN_OP()
+            elseif currVal == UN_OP then no_advance = doUN_OP()
             else
                 print('ERROR: Unhandled STMT in '..debug.getinfo(1, 'n').name) -- debug) -- debug
                 printDebugString()
             end
         end
+
+        return no_advance
     end
 
 
@@ -586,7 +590,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- doIF_STMT
     -- Processes an if statment and the necessary case's STMT_LIST
     -- Accepts: None (single var 'cond_hit' is only used in recursive calls)
-    -- Returns: None
+    -- Returns: True (necessary to tell caller not to advanceNode()
     function doIF_STMT(cond_hit)
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
@@ -668,13 +672,115 @@ function interpit.interp(start_ast, state, incall, outcall)
     end
 
     
-    -- doWHLIE_STATMENT
-    -- Processes a while statment and its STMT_LIST accordingly
+    -- doWHILE_STATMENT
+    -- Processes a while loop and its STMT_LIST accordingly
     -- Accepts/Returns: None
     function doWHILE_STMT()
         advanceNode()
         print('In '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
+        -- local value, execute = nil
+        -- local matched = false   -- denote if we've matched a cond at this depth
+
+
+        -- function to call to attempt to run a STMT_LIST
+        -- only runs it if we haven't matched the if cond yet.
+        -- function runstmt(stmt_list)
+        --     if cond_hit then
+        --         -- print('cond_hit = true. SKIPPING:') --debug
+        --         print(astToStr(stmt_list))
+        --     else
+        --         -- print('cond_hit = false. RUNNING.') --debug
+        --         interpCOND_STMT(stmt_list)
+        --     end
+        -- end
+
+        -- -- If currVal is not an operator (BIN_OP or UN_OP) or
+        -- -- NUMLIT_VAL or BOOLIT_VAL, we're done w the loop
+        -- if not (currVal == BIN_OP or currVal == UN_OP or currVal == NUMLIT_VAL
+        --         or currVal == BOOLLIT_VAL) then 
+        --             print('Done w While') --debug
+        --             return end
+        
+        local temp = {}
+        local expr = {}
+        local op_type = nil
+        local op_set = nil
+        local execute = nil
+        local value = nil
+
+        -- build a STMT_LIST AST for the expression from next vals,
+        -- noting the operator type when we see it.
+        while true do
+            -- printDebugString()
+            if currKey == CONST then
+                if not op_set then 
+                    op_type = currVal 
+                    op_set = true
+                end
+                table.insert(temp, currVal)
+            elseif currKey == STR or currKey == BOOL then
+                table.insert(temp, currVal)
+                table.insert(expr, temp)
+                temp = {}
+            end                
+            advanceNode()       
+            if type(currVal) == 'table' then break end
+        end
+
+        -- curVal is our STMT_LIST to execute inside the loop
+        execute = currVal
+        
+        -- debug
+        -- print('while expr: '..op_type)
+        -- print(astToStr(expr))
+        -- print('\n')
+        -- print(astToStr(execute))
+        -- print('\n')
+        -- printDebugString()
+
+        while true do
+            -- handle BIN_OP 
+            if op_type == BIN_OP then 
+                value = interpCOND_STMT(expr, true)
+                print('b: '..value..':'..astToStr(execute))  
+
+            -- handle UN_OP 
+            elseif op_type == UN_OP then
+                value = interpCOND_STMT(expr, true)                
+                print('u: '..value..':'..astToStr(execute))
+
+            -- handle NUMLIT and BOOLLIT 
+            elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
+                value = expr[2]
+                print('l: '..value..':'..astToStr(execute))
+            
+            -- unhandled
+            else
+                print('Unhandled optype in WHILE_STMT: '..op_type)
+            end
+
+            if boolToInt(value) == 1 then
+                interpCOND_STMT(execute)
+            else
+                print('done w WHILE')
+                break
+            end
+        end
+        -- -- handle STMT_LIST, i.e the if's "else" branch
+        -- elseif type(currVal) == "table" then
+        --     value = 1 -- set to true so execute gets done if we haven't matched
+        --     execute = currVal
+        --     -- print('e: '..value..':'..astToStr(execute))
+
+        
+        -- Process the rest of the if stmt recursively, passing if
+        -- we have matched a cond (either in this iteration or previously)
+        -- doIF_STMT((matched or cond_hit))
+
+        -- return true to tell do_STMT_LIST not to advanceNode()
+        -- (because we did it in this function already)
+        -- return true 
     end
 
     
@@ -729,11 +835,12 @@ function interpit.interp(start_ast, state, incall, outcall)
         print('In ('..n..'): '..debug.getinfo(1, 'n').name) --debug output
         printDebugString()  -- debug output
 
-        local lvalue, ltype = nil   -- left operand
-        local rvalue, rtype = nil   -- right operand
-        local operator = currVal    -- operator
+        local name, index = nil   -- temp vars
+        local lvalue, ltype = nil       -- left operand
+        local rvalue, rtype = nil       -- right operand
+        local operator = currVal        -- operator
 
-        -- For both the l and r values, the following invariants hold:
+        -- For both the l and r values:
         -- Next node == BIN_OP, UN_OP, NUM_LIT, SIMPLE_VAR, or ARRAY_VAR
         -- If BIN_OP or UN_OP, recursively call this func to process them.
         -- Else, the next value is an operand.
@@ -744,10 +851,16 @@ function interpit.interp(start_ast, state, incall, outcall)
             lvalue = doBIN_OP() 
         elseif currVal == UN_OP then
             lvalue = doUN_OP()
-        else
+        elseif currVal == SIMPLE_VAR then
+            name, ltype, lvalue, index = parseAndGetVar()            
+        elseif currVal == ARRAY_VAR then
+            name, ltype, lvalue, index = parseAndGetVar()
+        elseif currVal == NUMLIT_VAL then
             ltype = currVal
-            advanceNode()        
-            lvalue = convertVal(ltype, currVal)           
+            advanceNode()  
+            lvalue = convertVal(ltype, currVal) 
+        else
+            print('ERROR: Unhandled value in BIN_OP lvalue'..curVal)          
         end
         
         -- evaluate rvalue
@@ -756,12 +869,21 @@ function interpit.interp(start_ast, state, incall, outcall)
             rvalue = doBIN_OP() 
         elseif currVal == UN_OP then
             rvalue = doUN_OP()
-        else
+        elseif currVal == SIMPLE_VAR then
+            name, rtype, rvalue, index = parseAndGetVar()            
+        elseif currVal == ARRAY_VAR then
+            name, rtype, rvalue, index = parseAndGetVar()
+        elseif currVal == NUMLIT_VAL then
             rtype = currVal
-            advanceNode()        
-            rvalue = convertVal(rtype, currVal)
+            advanceNode()  
+            rvalue = convertVal(rtype, currVal)           
+        else
+            print('ERROR: Unhandled value in BIN_OP rvalue'..curVal)
         end
 
+        -- print(lvalue) --debug
+        -- print(rvalue) --debug
+        
         -- Necessary nodes processed, determine result and return.
         local result = false
         if operator == '&&' then
@@ -790,8 +912,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- put bools in str form?
         if result == true then result = 'true'
         elseif result == false then result = 'false'end
-        -- local disp = result -- debug
-        -- print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
+        local disp = result -- debug
+        print('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
 
@@ -803,9 +925,10 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doUN_OP()        
         m = m+1
         advanceNode()
-        -- print('In ('..m..'): '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        print('In ('..m..'): '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
 
+        local name, index               -- temp
         local value, type, result = nil -- operand
         local operator = currVal        -- operator
 
@@ -820,10 +943,16 @@ function interpit.interp(start_ast, state, incall, outcall)
             value = doBIN_OP() 
         elseif currVal == UN_OP then
             value = doUN_OP()
-        else
+        elseif currVal == SIMPLE_VAR then
+            name, type, value, index = parseAndGetVar()            
+        elseif currVal == ARRAY_VAR then
+            name, type, value, index = parseAndGetVar()
+        elseif currVal == NUMLIT_VAL then
             type = currVal
-            advanceNode()        
-            value = convertVal(type, currVal)
+            advanceNode()  
+            value = convertVal(type, currVal) 
+        else
+            print('ERROR: Unhandled value in BIN_OP lvalue'..curVal)          
         end
 
         -- determine result
@@ -871,7 +1000,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         end
     end
 
-    function interpCOND_STMT(ast)
+    -- similiar to above but returns a result and stops at baseAST
+    function interpCOND_STMT(ast, no_advance)
         print('-- Processing COND AST:') -- Debug output
         print(astToStr(ast))        -- Debug output
 
@@ -888,14 +1018,16 @@ function interpit.interp(start_ast, state, incall, outcall)
         astParser[currAST] = coroutine.create(iterateSubtree)
         
         local firstFlag = false;
+        local result = nil;
         while currAST > 0 and coroutine.status(astParser[currAST]) ~= 'dead' do
             print('In COND loop # '..currAST) -- debug
-            if not firstFlag then advanceNode() end
-            doSTMT_LIST()
+            if not firstFlag and not no_advance then advanceNode() end
+            result = doSTMT_LIST()
             currAST = currAST - 1
             firstFlag = true
             if currAST <= baseASTCount then break end
         end
+        return result
     end
 
 
