@@ -177,7 +177,9 @@ local function evalArith (lval, rval, op)
     if op == '+' then return lval + rval
     elseif op == '-' then return lval - rval
     elseif op == '*' then return lval * rval
-    elseif op == '%' then return lval % rval
+    elseif op == '%' then
+        if rval ~= 0 then return lval % rval end
+        return 0 -- return 0 on div by zero
     elseif op == '/' then 
         if rval ~= 0 then return lval / rval end
         return 0 -- return 0 on div by zero
