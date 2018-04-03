@@ -211,7 +211,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = true
+    local debugmode = false
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
     local currAST = 0            -- ASTtrees/parsers index (a pos num)
@@ -342,7 +342,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- advanceNode
     -- Advances astParse coroutine and assigns attributes to currKey and currVal
     local function advanceNode()
-        if currAST <= 0  or coroutine.status(ASTParsers[currAST]) == 'dead' then
+        if coroutine.status(ASTParsers[currAST]) == 'dead' then
         printDebug('Parser '..currAST..' dead') return end
         
         local ok = nil
@@ -468,10 +468,9 @@ function interpit.interp(start_ast, state, incall, outcall)
                 advanceNode()
             end
             no_advance = nil
+
             -- If coroutine dead, we're done
-            if currAST <= 0 or coroutine.status(ASTParsers[currAST]) == 'dead' then
-                break
-            end
+            if coroutine.status(ASTParsers[currAST]) == 'dead' then break end
 
             printDebug('In '..debug.getinfo(1, 'n').name) --debug output
 
@@ -1002,7 +1001,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         subtreeDone[currAST] = false
         ASTParsers[currAST] = coroutine.create(astParse)
         
-        printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for: '..ASTrees[currAST]) -- debug
+        printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for: '..astToStr(ASTrees[currAST])) -- debug
         local temp = currAST
 
         local result = doSTMT_LIST()
