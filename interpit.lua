@@ -524,8 +524,8 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- Accepts/Returns:None
     function doPRINT_STMT()
         advanceNode()
-        -- print('A - In '..debug.getinfo(1, 'n').name) --debug output
-        -- printDebugString()  -- debug output
+        print('A - In '..debug.getinfo(1, 'n').name) --debug output
+        printDebugString()  -- debug output
         
         -- handle CR_OUT (Print out a CR)
         if currVal == CR_OUT then
@@ -721,17 +721,17 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- handle BIN_OP 
             if op_type == BIN_OP then 
                 value = interpCOND_STMT(expr, true)
-                print('b: '..value..':'..astToStr(execute))  
+                -- print('b: '..value..':'..astToStr(execute))  
 
             -- handle UN_OP 
             elseif op_type == UN_OP then
                 value = interpCOND_STMT(expr, true)                
-                print('u: '..value..':'..astToStr(execute))
+                -- print('u: '..value..':'..astToStr(execute))
 
             -- handle NUMLIT and BOOLLIT 
             elseif op_type == NUMLIT_VAL or op_type == BOOLLIT_VAL then
                 value = expr[2]
-                print('l: '..value..':'..astToStr(execute))
+                -- print('l: '..value..':'..astToStr(execute))
             
             -- unhandled
             else
