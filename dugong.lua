@@ -62,7 +62,7 @@ end
 -- outputString
 -- Output the given string to standard output, with no added newline.
 function outputString(s)
-    -- print("***\n*** Outcall: ".. s .. "\n")
+    -- print("***\n*** Outcall: ".. s .. "\n***\n")
     io.write(s)
 end
 

@@ -42,7 +42,7 @@
 -- *local FUNC_STMT   = 4
 -- *local CALL_FUNC   = 5
 -- *local IF_STMT     = 6
--- local WHILE_STMT  = 7
+-- *local WHILE_STMT  = 7
 -- *local ASSN_STMT   = 8
 -- *local CR_OUT      = 9
 -- *local STRLIT_OUT  = 10
