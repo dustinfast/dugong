@@ -1,0 +1,15 @@
+
+print 'start';cr
+
+i = 1
+j = 2
+while i <= 4 || false
+	print i;', '
+	i = i + 3
+	while j < 4
+		print j;', '
+		j = j + 1
+	end
+end
+
+print cr;'done - should see 1, 2, 3, 4,'
