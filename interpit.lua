@@ -209,6 +209,8 @@ end
 -- Returns: state, updated with new and/or updated variable values
 function interpit.interp(start_ast, state, incall, outcall)
 
+
+
     -- interp variables --
     ----------------------
     local debugmode = false
@@ -834,7 +836,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         local operator = currVal        -- operator
 
         -- For both the l and r values:
-        -- Next node == BIN_OP, UN_OP, NUM_LIT, SIMPLE_VAR, or ARRAY_VAR
+        -- Next node == BIN_OP, UN_OP, NUMLIT_VAL, BOOLIT_VAL, SIMPLE_VAR, ARRAY_VAR.
         -- If BIN_OP or UN_OP, recursively call this func to process them.
         -- Else, the next value is an operand.
 
@@ -848,7 +850,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             name, ltype, lvalue, index = parseAndGetVar()            
         elseif currVal == ARRAY_VAR then
             name, ltype, lvalue, index = parseAndGetVar()
-        elseif currVal == NUMLIT_VAL then
+        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
             ltype = currVal
             advanceNode()  
             lvalue = convertVal(ltype, currVal) 
@@ -866,12 +868,40 @@ function interpit.interp(start_ast, state, incall, outcall)
             name, rtype, rvalue, index = parseAndGetVar()            
         elseif currVal == ARRAY_VAR then
             name, rtype, rvalue, index = parseAndGetVar()
-        elseif currVal == NUMLIT_VAL then
+        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
             rtype = currVal
             advanceNode()  
-            rvalue = convertVal(rtype, currVal)           
+            rvalue = convertVal(rtype, currVal) 
         else
             print('ERROR: Unhandled value in BIN_OP rvalue'..curVal)
+        end
+
+        -- convert bool vals to a actual bools
+        if ltype == BOOLLIT_VAL then
+            if lvalue == 0 then lvalue = false
+            elseif lvalue == 1 then lvalue = true end
+        end
+        if rtype == BOOLLIT_VAL then
+            if rvalue == 0 then rvalue = false
+            elseif rvalue == 1 then rvalue = true end
+        end
+        if type(lvalue) == 'string' then
+            if lvalue == 'false' then lvalue = false
+            elseif lvalue == 'true' then lvalue = true end
+        end
+        if type(rvalue) == 'string' then
+            if rvalue == 'false' then rvalue = false
+            elseif rvalue == 'true' then rvalue = true end
+        end
+
+        -- ensure no nil vals (will happen if an undefined var was used, etc)
+        if lvalue == nil then 
+            lvalue = 0
+            print('WARNING: An undefined lvaluee was referenced. Behavior will be unpredictable.')
+        end
+        if rvalue == nil then
+            rvalue = 0 
+            print('WARNING: An undefined rvalue was referenced. Behavior will be unpredictable.')
         end
 
         -- printDebug(lvalue) --debug
@@ -901,10 +931,16 @@ function interpit.interp(start_ast, state, incall, outcall)
         else
             print('ERROR: Unhandled operator encountered: '..operator)
         end
-
+        
         -- put bools in str form for debug display
+        if lvalue == true then lvalue = 'true'
+        elseif lvalue == false then lvalue = 'false'end
+        if rvalue == true then rvalue = 'true'
+        elseif rvalue == false then rvalue = 'false'end
         if result == true then result = 'true'
         elseif result == false then result = 'false'end
+        
+        -- printDebug('Operator types: '..type(lvalue)..':'..type(rvalue))
         printDebug('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
         return result
     end
@@ -918,7 +954,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
 
         local name, index               -- temp
-        local value, type, result = nil -- operand
+        local value, vtype, result = nil -- operand
         local operator = currVal        -- operator
 
         -- Tthe following invariants hold:
@@ -933,27 +969,53 @@ function interpit.interp(start_ast, state, incall, outcall)
         elseif currVal == UN_OP then
             value = doUN_OP()
         elseif currVal == SIMPLE_VAR then
-            name, type, value, index = parseAndGetVar()            
+            name, vtype, value, index = parseAndGetVar()            
         elseif currVal == ARRAY_VAR then
-            name, type, value, index = parseAndGetVar()
-        elseif currVal == NUMLIT_VAL then
-            type = currVal
+            name, vtype, value, index = parseAndGetVar()
+        elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
+            vtype = currVal
             advanceNode()  
-            value = convertVal(type, currVal) 
+            value = convertVal(vtype, currVal) 
+            if vtype == BOOLLIT_VAL then
+                if value == 0 then value = false
+                elseif value == 1 then value = true end
+            end
         else
             print('ERROR: Unhandled value in BIN_OP lvalue'..curVal)          
         end
 
-        -- determine result
+        -- convert bool vals to a actual bools
+        if vtype == BOOLLIT_VAL then
+            if value == 0 then value = false
+            elseif value == 1 then value = true end
+        end
+        if type(value) == 'string' then
+            if value == 'false' then value = false
+            elseif value == 'true' then value = true end
+        end
+
+        -- ensure no nil vals (will happen if an undefined var was used, etc)
+        if value == nil then 
+            value = 0 
+            print('WARNING: An undefined value was referenced. Behavior will be unpredictable.')
+        end
+
+        -- handle NOT operator (invert the value)
         if operator == '-' or operator == '!' then
-            if type == NUMLIT_VAL then result = -value
-            elseif type == BOOLLIT_VAL then 
-                if value == 0 then result = 1
-                else result = 0 end
+            if vtype == NUMLIT_VAL then result = -value
+            elseif type(value) == 'boolean' then 
+                if value == true then result = false
+                else result = true end
             end
         else
             result = value
         end
+
+        -- put bools in str form for debug display
+        if value == true then value = 'true'
+        elseif value == false then value = 'false'end
+        if result == true then result = 'true'
+        elseif result == false then result = 'false'end
 
         printDebug('UN_OP results: '..operator..value..' = '..result) -- debug
         return result
