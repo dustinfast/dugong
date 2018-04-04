@@ -129,6 +129,22 @@ local function convertVal(type, value)
     end
 end
 
+local function convertToStr(value)
+    if type(value) == 'boolean' then
+        if value == false then value = 'false'
+        elseif value == true then value = 'true' end
+    elseif type(value) == 'number' then
+        value =  ''..value
+    elseif type(value) == 'string' then
+        -- value = value
+    elseif type(value) == 'table' then
+        value = astToStr(value)
+    else
+        print('ERROR - Unhandled converToStr type for '.. value)
+    end
+
+    return value
+end
 
 -- astToStr (G Chappell, 2018)
 -- Given an AST, produce a string holding the AST in (roughly) Lua form,
@@ -213,7 +229,8 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = false
+    local debugmode = false      -- denotes debug output on/off
+    local debugpause = false     -- denotes debug output causes pause
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
     local currAST = 0            -- ASTtrees/parsers index (a pos num)
@@ -242,7 +259,7 @@ function interpit.interp(start_ast, state, incall, outcall)
                 if str then print(str) end
                 print('{ '..key..', '..val..' } (currAST = '..currAST..')')
             end
-            io.read('*l') -- pause
+            if debugpause then io.read('*l') end -- pause
         end
     end
 
@@ -393,19 +410,29 @@ function interpit.interp(start_ast, state, incall, outcall)
     --          index = Array index. Required if type = ARRAY_VAR
     -- Returns: 
     local function getVar(name, type, index)
+        local value = nil
+        
         if type == SIMPLE_VAR then
-            return state.v[name]
-
+            value = state.v[name]
         elseif type == ARRAY_VAR then
-            return state.a[name][index]
-
+            value = state.a[name]
+            if value ~= nil then
+                value = value[index]
+            end
         elseif type == FUNC_STMT then
-            return state.f[name]
-
+            value = state.f[name]
         else
             if not index then index = 'nil' end
-            print('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
+            print('ERROR: Unhandled var fetch: '..name..', '..type..', '..index)
         end
+
+        -- ensure no nil vals (i.e. an undefined var was used)
+        if value == nil then 
+            value = '0' 
+            print('WARNING: An undefined value was referenced. Behavior will be unpredictable.')
+        end
+
+        return value
     end
 
     -- parseVar
@@ -563,11 +590,19 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             -- handle UN_OP
             elseif currVal == UN_OP then
-                doOutcall(doUN_OP())
+                val = doUN_OP()
+                print(val)
+                doOutcall(val)
             
             -- handle SIMPLE_VAR and ARRAY_VAR
             elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
-                local name, type, value, index = parseAndGetVar()
+                local name, vtype, value, index = parseAndGetVar()
+            
+            -- ensure value is in string form for outcall
+            if type(value) ~= 'string' then
+                value = convertToStr(value)
+            end
+
                 outcall(value)
 
             -- handle CALL_FUNC
@@ -894,16 +929,6 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif rvalue == 'true' then rvalue = true end
         end
 
-        -- ensure no nil vals (will happen if an undefined var was used, etc)
-        if lvalue == nil then 
-            lvalue = 0
-            print('WARNING: An undefined lvaluee was referenced. Behavior will be unpredictable.')
-        end
-        if rvalue == nil then
-            rvalue = 0 
-            print('WARNING: An undefined rvalue was referenced. Behavior will be unpredictable.')
-        end
-
         -- printDebug(lvalue) --debug
         -- printDebug(rvalue) --debug
         
@@ -992,12 +1017,6 @@ function interpit.interp(start_ast, state, incall, outcall)
         if type(value) == 'string' then
             if value == 'false' then value = false
             elseif value == 'true' then value = true end
-        end
-
-        -- ensure no nil vals (will happen if an undefined var was used, etc)
-        if value == nil then 
-            value = 0 
-            print('WARNING: An undefined value was referenced. Behavior will be unpredictable.')
         end
 
         -- handle NOT operator (invert the value)
