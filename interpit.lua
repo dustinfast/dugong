@@ -1014,19 +1014,21 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- handle negative operator 
         result = value
         if op == '-' then
-            if vtype == NUMLIT_VAL then result = -value
-            elseif type(value) == 'boolean' then 
+            -- if vtype == NUMLIT_VAL then result = -value
+            if type(value) == 'boolean' then 
                 if value == true then result = false
                 else result = true end
+            else 
+                result = -value
             end
 
         -- handle negation operator
         elseif op == '!' then
-            if vtype == NUMLIT_VAL then 
+            if type(value) == 'boolean' then 
+                result = not value
+            else
                 if value >= 1 then result = 0
                 else result = 1 end
-            elseif type(value) == 'boolean' then 
-                result = not value
             end
         end
 
@@ -1036,7 +1038,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- if result == true then result = 'true'
         -- elseif result == false then result = 'false'end
 
-        print('UN_OP results: '..op..convertToStr(value)..' = '..convertToStr(result)) -- debug
+        printDebug('UN_OP results: '..op..convertToStr(value)..' = '..convertToStr(result)) -- debug
         return result
     end
 
