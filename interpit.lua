@@ -108,14 +108,17 @@ local function boolToInt(b)
             return 0
         end
     elseif type(b) == 'string' then
-        if b == 'true' then
+        if b == 'true' then 
             return 1
-        else
+        elseif b == 'false' then 
+            return 0
+        elseif strToNum(b) > 0 then
+            return 1
+        else 
             return 0
         end
     elseif type(b) == 'number' then
-        return b
-        -- if b >= 1 then return 1 else return 0 end
+        if b >= 1 then return 1 else return 0 end
     end
 end
 
@@ -232,7 +235,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = false     -- denotes debug output on/off
+    local debugmode = true     -- denotes debug output on/off
     local debugpause = false     -- denotes debug output causes pause
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
@@ -605,7 +608,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             if value == nil then value = 0 end
             
-            -- do the call to print to console
+            -- do outcall
             doOutcall(value)
 
             -- peak at next node. if not another p arg, return
@@ -700,13 +703,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             -- printDebug('comparing '..value) -- debug
             advanceNode()
             execute = currVal
-
-            value = boolToInt(value)
-            -- if type(value) == 'string' then 
-            --     if  value == 'true' or value == 'false' then value = boolToInt(value)
-            --     else value = value+0 end
-            -- end
-            print('l: '..value..':'..type(value)..':\n'..astToStr(execute))
+            -- printDebug('Lit1: '..value..':'..type(value)..':\n'..astToStr(execute))
 
         -- handle STMT_LIST, i.e the if's "else" branch
         elseif type(currVal) == "table" then
@@ -720,7 +717,8 @@ function interpit.interp(start_ast, state, incall, outcall)
         end
 
         -- Do the correct action based on value (assigned above)
-        if boolToInt(value) == 1 then 
+        -- print('COMP: '..boolToInt(value)..':'..type(boolToInt(value))..':\n'..astToStr(execute))
+        if boolToInt(value) >= 1 then 
             -- printDebug('eval TRUE -')
             matched = true
             runstmt(execute)
@@ -730,8 +728,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         --     printDebug(astToStr(execute))
         end
 
-        -- Process the rest of the if stmt recursively, passing if
-        -- we have matched a cond (either in this iteration or previously)
+        -- Recursively process next conds
         doIF_STMT((matched or cond_hit))
 
         -- return true to tell do_STMT_LIST not to advanceNode()
@@ -938,8 +935,8 @@ function interpit.interp(start_ast, state, incall, outcall)
                or op == '+' or op == '-' or op == '*' or op == '/' or op == '%' then
             
             -- normalize ints and get result
-            lvalue = boolToInt(lvalue)
-            rvalue = boolToInt(rvalue)
+            if type(lvalue) ~= 'number' then lvalue = boolToInt(lvalue) end
+            if type(rvalue) ~= 'number' then rvalue = boolToInt(rvalue) end
             
             if op == '<' then
                 if lvalue < rvalue then result = true end
@@ -957,8 +954,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('ERROR: Unhandled operator encountered: '..op)
         end
         
-        print('Operand types: '..type(lvalue)..':'..type(rvalue))
-        print('BIN_OP results: '..convertToStr(lvalue)..' '..convertToStr(op)..' '..convertToStr(rvalue)..' = '..convertToStr(result)) -- debug
+        printDebug('Operand types: '..type(lvalue)..':'..type(rvalue))
+        printDebug('BIN_OP results: '..convertToStr(lvalue)..' '..convertToStr(op)..' '..convertToStr(rvalue)..' = '..convertToStr(result)) -- debug
         return result
     end
 
