@@ -1,21 +1,21 @@
 #!./dugong.lua
 
 if 1 == 1
-	print 'start'
+	print 'start';cr
 end
 
 if false || false
-	print 'if hit'
+	print 'if hit';cr
 elseif false
 	if true
-		print 'elseif UN hit'
+		print 'elseif UN hit';cr
 	end
 elseif 1 == 0 || -true || 2==1 || false
-	print 'elseif BIN 1 hit'
+	print 'elseif BIN 1 hit';cr
 elseif false || -false
-	print 'elseif BIN 2 hit'
+	print 'elseif BIN 2 hit';cr
 else
-	print 'else hit'
+	print 'else hit';cr
 end
 
-print 'done - should see: start, elseif BIN 2 hit'
+print 'done - should see: elseif BIN 2 hit'
