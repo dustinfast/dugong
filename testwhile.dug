@@ -1,6 +1,12 @@
 
 print 'start';cr
 
+m[5] = 0
+
+while m[5]
+	print 'oops'
+end
+
 i = 1
 j = 2
 while i <= 4 || false

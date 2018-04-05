@@ -1,5 +1,6 @@
 TODO
 
-Remove BOOL!
 slow scroll
 short curcuit && ops
+
+
