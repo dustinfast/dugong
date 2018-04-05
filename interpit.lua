@@ -115,6 +115,7 @@ local function boolToInt(b)
         end
     elseif type(b) == 'number' then
         return b
+        -- if b >= 1 then return 1 else return 0 end
     end
 end
 
@@ -197,10 +198,12 @@ local function evalArith (lval, rval, op)
         if rval ~= 0 then return lval % rval end
         return 0 -- return 0 on div by zero
     elseif op == '/' then 
-        if rval ~= 0 then return math.floor(lval / rval )end
+        if rval ~= 0 then 
+            return numToInt(lval / rval) -- numToInt for int division
+        end
         return 0 -- return 0 on div by zero
     else
-      Print('ERROR: Invalid Operator Encountered: '..op)
+      print('ERROR: Invalid Operator Encountered: '..op)
     end
 end
 
@@ -229,7 +232,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
     -- interp variables --
     ----------------------
-    local debugmode = false      -- denotes debug output on/off
+    local debugmode = false     -- denotes debug output on/off
     local debugpause = false     -- denotes debug output causes pause
     local ASTParsers = {}        -- a list of ast parser coroutines
     local ASTrees = {}           -- a list of the trees we're parsing
@@ -584,7 +587,6 @@ function interpit.interp(start_ast, state, incall, outcall)
 
             elseif currVal == BIN_OP then
                 value = doBIN_OP()
-                print(type(value))
             elseif currVal == UN_OP then
                 value = doUN_OP()
             
@@ -680,28 +682,31 @@ function interpit.interp(start_ast, state, incall, outcall)
                     -- printDebug('Done w If') --debug
                     return end
 
-        -- handle BIN_OP 
         if currVal == BIN_OP then 
             value = doBIN_OP()
             advanceNode()
             execute = currVal
             -- printDebug('b: '..value..':'..astToStr(execute))  
 
-        -- handle UN_OP 
         elseif currVal == UN_OP then
             value = doUN_OP()   
             advanceNode()
             execute = currVal
             -- printDebug('u: '..value..':'..astToStr(execute))
 
-        -- handle NUMLIT and BOOLLIT 
         elseif currVal == NUMLIT_VAL or currVal == BOOLLIT_VAL then
             advanceNode()
             value = currVal
             -- printDebug('comparing '..value) -- debug
             advanceNode()
             execute = currVal
-            -- printDebug('l: '..value..':'..astToStr(execute))
+
+            value = boolToInt(value)
+            -- if type(value) == 'string' then 
+            --     if  value == 'true' or value == 'false' then value = boolToInt(value)
+            --     else value = value+0 end
+            -- end
+            print('l: '..value..':'..type(value)..':\n'..astToStr(execute))
 
         -- handle STMT_LIST, i.e the if's "else" branch
         elseif type(currVal) == "table" then
@@ -903,7 +908,7 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('ERROR: Unhandled value in BIN_OP rvalue'..curVal)
         end
 
-        -- handle boolean ops
+        -- handle boolean operators
         if op == '&&' or op == '||' or op == '==' or op == '!=' then
             
             -- normalize bool forms
@@ -928,10 +933,11 @@ function interpit.interp(start_ast, state, incall, outcall)
                 if lvalue ~= rvalue then result = true end
             end
 
+        -- handle arith operators
         elseif op == '<' or op == '<=' or op == '>' or op == '>='
                or op == '+' or op == '-' or op == '*' or op == '/' or op == '%' then
             
-            -- normalize ints
+            -- normalize ints and get result
             lvalue = boolToInt(lvalue)
             rvalue = boolToInt(rvalue)
             
@@ -951,16 +957,8 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('ERROR: Unhandled operator encountered: '..op)
         end
         
-        -- put bools in str form for debug display
-        -- if lvalue == true then lvalue = 'true'
-        -- elseif lvalue == false then lvalue = 'false'end
-        -- if rvalue == true then rvalue = 'true'
-        -- elseif rvalue == false then rvalue = 'false'end
-        -- if result == true then result = 'true'
-        -- elseif result == false then result = 'false'end
-        
-        printDebug('Operand types: '..type(lvalue)..':'..type(rvalue))
-        printDebug('BIN_OP results: '..convertToStr(lvalue)..' '..convertToStr(op)..' '..convertToStr(rvalue)..' = '..convertToStr(result)) -- debug
+        print('Operand types: '..type(lvalue)..':'..type(rvalue))
+        print('BIN_OP results: '..convertToStr(lvalue)..' '..convertToStr(op)..' '..convertToStr(rvalue)..' = '..convertToStr(result)) -- debug
         return result
     end
 
