@@ -260,11 +260,10 @@ function interpit.interp(start_ast, state, incall, outcall)
             else val = currVal end
 
             if type(val) == 'table' then
-                print(astToStr(val))
-            else
-                if str then print(str) end
-                print('{ '..key..', '..val..' } (currAST = '..currAST..')')
+                val = astToStr(val)
             end
+            if str then print('** '..str..' **') end
+            print('{ '..key..', '..val..' } (currAST = '..currAST..')\n')
             if debugpause then io.read('*l') end -- pause
         end
     end
@@ -299,8 +298,9 @@ function interpit.interp(start_ast, state, incall, outcall)
                 if node == STMT_LIST then
                     if firstFlag[currAST]then
                         -- printDebug('ast served')
-                        -- coroutine.yield(SUBTREE, stmtList[currAST])
-                        coroutine.yield(SUBTREE, table.remove(stmtList[currAST]))
+                        serveast = table.remove(stmtList[currAST])
+                        printDebug('** ast served: '..astToStr(serveast)..'**') --debug                        
+                        coroutine.yield(SUBTREE, serveast)
                         --stmtList[currAST] = nil
                         subtreeDone[currAST] = true
                     else
@@ -338,7 +338,7 @@ function interpit.interp(start_ast, state, incall, outcall)
                 if (i+1) <= #node then
                     if firstFlag[currAST] and (i+1) <= #node and node[i+1][1] == STMT_LIST then
                         -- stmtList[currAST] = node[i+1]                        
-                        -- printDebug('ast saved: '..astToStr(node[i+1])..'\n') --debug
+                        printDebug('** ast saved: '..astToStr(node[i+1])..'**') --debug
                         table.insert(stmtList[currAST], 1, node[i+1])
                     end
                 end
@@ -682,7 +682,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         -- NUMLIT_VAL or BOOLIT_VAL, or STMT_LIST, we're done w the IF_STMT
         if not (currVal == BIN_OP or currVal == UN_OP or currVal == NUMLIT_VAL
                 or currVal == BOOLLIT_VAL or type(currVal) == "table") then 
-                    -- printDebug('Done w If') --debug
+                    printDebug('Done w If') --debug
                     return end
 
         if currVal == BIN_OP then 
@@ -1044,8 +1044,6 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- from any other func that encounters a STMT_LIST
     -- Acccepts: an AST node of type STMT_LIST
     function interpSTMT_LIST(ast)
-        printDebug('-- Starting MAIN AST interp --') -- Debug output
-
         -- increase ast parser count by 1 and init ast parser coroutine
         currAST = currAST + 1
         ASTrees[currAST] = ast
@@ -1056,8 +1054,6 @@ function interpit.interp(start_ast, state, incall, outcall)
 
         printDebug('In MAIN loop #'..currAST.. ' for:\n'..astToStr(ASTrees[currAST])) -- debug            
         local temp = currAST
-
-
         doSTMT_LIST()
         currAST = currAST - 1
         printDebug('END MAIN loop # '..temp..' Curr = '..currAST) -- debug 
@@ -1066,12 +1062,9 @@ function interpit.interp(start_ast, state, incall, outcall)
     -- similiar to above but returns a result and stops at baseAST
     -- the index also counts on a diff var
     function interpCOND_STMT(ast, no_advance)
-        printDebug('-- Starting COND AST interp --') -- Debug output
-
-        -- note currAST count. We will break when we hit it
-        local baseASTCount = currAST
 
         -- increase ast parser count by 1 and init ast parser coroutine
+        local baseASTCount = currAST -- note curr AST count, for debug
         currAST = currAST + 1
         ASTrees[currAST] = ast
         firstFlag[currAST] = false
@@ -1081,9 +1074,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         
         printDebug('In COND loop #'..currAST.. ' base = '..baseASTCount..' for: '..astToStr(ASTrees[currAST])) -- debug
         local temp = currAST
-
         local result = doSTMT_LIST()
-
         currAST = currAST - 1
         printDebug('END COND loop # '..temp..' Curr = '..currAST) -- debug
         
