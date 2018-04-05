@@ -197,7 +197,7 @@ local function evalArith (lval, rval, op)
         if rval ~= 0 then return lval % rval end
         return 0 -- return 0 on div by zero
     elseif op == '/' then 
-        if rval ~= 0 then return lval / rval end
+        if rval ~= 0 then return math.floor(lval / rval )end
         return 0 -- return 0 on div by zero
     else
       Print('ERROR: Invalid Operator Encountered: '..op)
@@ -548,73 +548,63 @@ function interpit.interp(start_ast, state, incall, outcall)
     function doPRINT_STMT()
         advanceNode()
         
-        -- strip leading/trailing quotes if necessary and do outcall
+        -- do outcall after necessary formatting
         function doOutcall(str)
+            -- remove leading/trailing quote pair
             if type(str) == 'string' then
                 if (str:sub(1,1) == '"' and str:sub(#str, #str) == '"')
                 or (str:sub(1,1) == "'" and str:sub(#str, #str) == "'")
                 then str = str:sub(2, #str-1) end
+
+            -- represent bools as "1" or "0"
+            elseif type(str) == 'boolean' then
+                str = convertToStr(boolToInt(str))
+            
+            -- encapsilate anything else in a string
+            else
+                str = convertToStr(str)
             end
 
+            -- pass string to outcall to perform output
             outcall(str)
         end
 
         while true do
             printDebug('In '..debug.getinfo(1, 'n').name) --debug output
-            
-            -- handle CR_OUT (Print out a CR)
+            local value = nil
+
             if currVal == CR_OUT then
-                doOutcall('\n')
+                value = '\n'
 
-            -- handle STRLIT_OUT 
-            elseif currVal == STRLIT_OUT then
-                -- next val is string to output
+            elseif currVal == STRLIT_OUT
+                   or currVal == NUMLIT_VAL
+                   or currVal == BOOLLIT_VAL then
                 advanceNode()
-                doOutcall(currVal)
+                value = currVal
 
-            -- handle NUMIT_VAL 
-            elseif currVal == NUMLIT_VAL then
-                -- next val is string to output
-                advanceNode()
-                doOutcall(currVal)
-
-            -- handle BOOLLIT_VAL 
-            elseif currVal == BOOLLIT_VAL then
-                -- next val is string to output
-                advanceNode()
-                doOutcall(currVal)
-
-            -- handle BIN_OP
             elseif currVal == BIN_OP then
-                doOutcall(doBIN_OP())
-
-            -- handle UN_OP
+                value = doBIN_OP()
+                print(type(value))
             elseif currVal == UN_OP then
-                val = doUN_OP()
-                print(val)
-                doOutcall(val)
+                value = doUN_OP()
             
-            -- handle SIMPLE_VAR and ARRAY_VAR
             elseif currVal == SIMPLE_VAR  or currVal == ARRAY_VAR then
-                local name, vtype, value, index = parseAndGetVar()
-            
-            -- ensure value is in string form for outcall
-            if type(value) ~= 'string' then
-                value = convertToStr(value)
-            end
+                local name, vtype, index = nil
+                name, vtype, value, index = parseAndGetVar()
 
-                outcall(value)
-
-            -- handle CALL_FUNC
             elseif currVal == CALL_FUNC then 
                 doCALL_FUNC(true)
-                doOutcall(getVar('return', SIMPLE_VAR))
+                value = getVar('return', SIMPLE_VAR)
 
-            -- unhandled
             else
                 print('ERROR: Unhandled case encountered in '..debug.getinfo(1, 'n').name) -- debug
                 printDebug()
             end
+
+            if value == nil then value = 0 end
+            
+            -- do the call to print to console
+            doOutcall(value)
 
             -- peak at next node. if not another p arg, return
             advanceNode()
@@ -860,15 +850,17 @@ function interpit.interp(start_ast, state, incall, outcall)
     
     -- doBIN_OP
     -- Accepts: None
-    -- Returns: Result of operation 1 or 0 for boolean operators, else an int
+    -- Returns: Result of operation (true or false for boolean operators, else an int)
     function doBIN_OP()        
         advanceNode()
         printDebug('In '..debug.getinfo(1, 'n').name) --debug output
 
-        local name, index = nil   -- temp vars
-        local lvalue, ltype = nil       -- left operand
-        local rvalue, rtype = nil       -- right operand
-        local operator = currVal        -- operator
+        local name, index = nil     -- temp vars
+        local lvalue, ltype = nil   -- left operand
+        local rvalue, rtype = nil   -- right operand
+        local op = currVal          -- operator
+        local result = false        -- final result (return value)
+        
 
         -- For both the l and r values:
         -- Next node == BIN_OP, UN_OP, NUMLIT_VAL, BOOLIT_VAL, SIMPLE_VAR, ARRAY_VAR.
@@ -911,62 +903,64 @@ function interpit.interp(start_ast, state, incall, outcall)
             print('ERROR: Unhandled value in BIN_OP rvalue'..curVal)
         end
 
-        -- convert bool vals to a actual bools
-        if ltype == BOOLLIT_VAL then
+        -- handle boolean ops
+        if op == '&&' or op == '||' or op == '==' or op == '!=' then
+            
+            -- normalize bool forms
             if lvalue == 0 then lvalue = false
-            elseif lvalue == 1 then lvalue = true end
-        end
-        if rtype == BOOLLIT_VAL then
-            if rvalue == 0 then rvalue = false
-            elseif rvalue == 1 then rvalue = true end
-        end
-        if type(lvalue) == 'string' then
-            if lvalue == 'false' then lvalue = false
+            elseif lvalue == 1 then lvalue = true
+            elseif lvalue == 'false' then lvalue = false
             elseif lvalue == 'true' then lvalue = true end
-        end
-        if type(rvalue) == 'string' then
-            if rvalue == 'false' then rvalue = false
+            
+            if rvalue == 0 then rvalue = false
+            elseif rvalue == 1 then rvalue = true
+            elseif rvalue == 'false' then rvalue = false
             elseif rvalue == 'true' then rvalue = true end
-        end
 
-        -- printDebug(lvalue) --debug
-        -- printDebug(rvalue) --debug
-        
-        -- Necessary nodes processed, determine result and return.
-        local result = false
-        if operator == '&&' then
-            if lvalue and rvalue then result = true end
-        elseif operator == '||' then
-            if lvalue or rvalue then result = true end
-        elseif operator == '==' then
-            if lvalue == rvalue then result = true end
-        elseif operator == '!=' then
-            if lvalue ~= rvalue then result = true end
-        elseif operator == '<' then
-            if lvalue < rvalue then result = true end
-        elseif operator == '<=' then
-            if lvalue <= rvalue then result = true end
-        elseif operator == '>' then
-            if lvalue > rvalue then result = true end
-        elseif operator == '>=' then
-            if lvalue >= rvalue then result = true end
-        elseif operator == '+' or operator == '-' or 
-                operator == '*' or operator == '/' or
-                operator == '%' then result = evalArith(lvalue, rvalue, operator)
+            -- determine boolean result
+            if op == '&&' then
+                if lvalue and rvalue then result = true end
+            elseif op == '||' then
+                if lvalue or rvalue then result = true end
+            elseif op == '==' then
+                if lvalue == rvalue then result = true end
+            elseif op == '!=' then
+                if lvalue ~= rvalue then result = true end
+            end
+
+        elseif op == '<' or op == '<=' or op == '>' or op == '>='
+               or op == '+' or op == '-' or op == '*' or op == '/' or op == '%' then
+            
+            -- normalize ints
+            lvalue = boolToInt(lvalue)
+            rvalue = boolToInt(rvalue)
+            
+            if op == '<' then
+                if lvalue < rvalue then result = true end
+            elseif op == '<=' then
+                if lvalue <= rvalue then result = true end
+            elseif op == '>' then
+                if lvalue > rvalue then result = true end
+            elseif op == '>=' then
+                if lvalue >= rvalue then result = true end
+            elseif op == '+' or op == '-' or op == '*' or op == '/' or op == '%' then 
+                result = evalArith(lvalue, rvalue, op)
+            end
+                        
         else
-            print('ERROR: Unhandled operator encountered: '..operator)
+            print('ERROR: Unhandled operator encountered: '..op)
         end
         
         -- put bools in str form for debug display
-        if lvalue == true then lvalue = 'true'
-        elseif lvalue == false then lvalue = 'false'end
-        if rvalue == true then rvalue = 'true'
-        elseif rvalue == false then rvalue = 'false'end
-        if result == true then result = 'true'
-        elseif result == false then result = 'false'end
+        -- if lvalue == true then lvalue = 'true'
+        -- elseif lvalue == false then lvalue = 'false'end
+        -- if rvalue == true then rvalue = 'true'
+        -- elseif rvalue == false then rvalue = 'false'end
+        -- if result == true then result = 'true'
+        -- elseif result == false then result = 'false'end
         
-        -- printDebug('Operator types: '..type(lvalue)..':'..type(rvalue))
-        printDebug('BIN_OP results: '..lvalue..' '..operator..' '..rvalue..' = '..result) -- debug
+        printDebug('Operand types: '..type(lvalue)..':'..type(rvalue))
+        printDebug('BIN_OP results: '..convertToStr(lvalue)..' '..convertToStr(op)..' '..convertToStr(rvalue)..' = '..convertToStr(result)) -- debug
         return result
     end
 
@@ -980,14 +974,12 @@ function interpit.interp(start_ast, state, incall, outcall)
 
         local name, index               -- temp
         local value, vtype, result = nil -- operand
-        local operator = currVal        -- operator
+        local op = currVal        -- operator
 
-        -- Tthe following invariants hold:
         -- Next node == BIN_OP, UN_OP, NUM_LIT, SIMPLE_VAR, or ARRAY_VAR
         -- If BIN_OP or UN_OP, recursively call this func to process them.
         -- Else, the current node value is our operand type,
         -- and the next value is the operand.
-
         advanceNode()
         if currVal == BIN_OP then 
             value = doBIN_OP() 
@@ -1019,24 +1011,32 @@ function interpit.interp(start_ast, state, incall, outcall)
             elseif value == 'true' then value = true end
         end
 
-        -- handle NOT operator (invert the value)
-        if operator == '-' or operator == '!' then
+        -- handle negative operator 
+        result = value
+        if op == '-' then
             if vtype == NUMLIT_VAL then result = -value
             elseif type(value) == 'boolean' then 
                 if value == true then result = false
                 else result = true end
             end
-        else
-            result = value
+
+        -- handle negation operator
+        elseif op == '!' then
+            if vtype == NUMLIT_VAL then 
+                if value >= 1 then result = 0
+                else result = 1 end
+            elseif type(value) == 'boolean' then 
+                result = not value
+            end
         end
 
         -- put bools in str form for debug display
-        if value == true then value = 'true'
-        elseif value == false then value = 'false'end
-        if result == true then result = 'true'
-        elseif result == false then result = 'false'end
+        -- if value == true then value = 'true'
+        -- elseif value == false then value = 'false'end
+        -- if result == true then result = 'true'
+        -- elseif result == false then result = 'false'end
 
-        printDebug('UN_OP results: '..operator..value..' = '..result) -- debug
+        print('UN_OP results: '..op..convertToStr(value)..' = '..convertToStr(result)) -- debug
         return result
     end
 
