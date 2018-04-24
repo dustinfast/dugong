@@ -1,8 +1,2 @@
-
-if true
-	if 1
-		print 'a'
-	else 
-		print 'b'	
-	end
-end
+a = 2
+z[a-1] = 11
