@@ -385,7 +385,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         
         else
             if not index then index = 'nil' end -- debug
-            print('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
+            printDebug('ERROR: Unhandled var assignment: '..name..', '..type..', '..val..', '..index)
         end
     end
 
@@ -411,7 +411,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         elseif type == FUNC_STMT then
             value = state.f[name]
         else
-            print('ERROR: Unhandled variable fetch: '..name..', '..type..', '..index)
+            printDebug('ERROR: Unhandled variable fetch: '..name..', '..type..', '..index)
         end
 
         -- ensure no nil vals (i.e. an undefined var was used)
@@ -437,11 +437,22 @@ function interpit.interp(start_ast, state, incall, outcall)
         local name = currVal
         local index = nil
 
-        -- If type is ARRAY_VAR, next val is NUMLIT_VAL, then array index
+        -- If type is ARRAY_VAR
         if type == ARRAY_VAR then
             advanceNode()
-            advanceNode()
-            index = strToNum(currVal)
+            if currVal == BIN_OP then index = doBIN_OP()
+            elseif currVal == UN_OP then index = doUN_OP()
+            elseif currVal == SIMPLE_VAR then 
+                local name2, type2, value2, index2
+                name2, type2, value2, index2 = parseAndGetVar()
+                index = value2
+            elseif currVal == NUMLIT_VAL then
+                advanceNode()
+                index = strToNum(currVal)
+            else 
+                printDebug('ERROR: Unhandled Array index type in '..debug.getinfo(1, 'n').name) -- debug
+                
+            end
         end
 
         return name, type, index
@@ -456,7 +467,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     --          type  = Variable type, either SIMPLE_VAR or ARRAY_VAR
     --          value = 
     --          index = Array index. Required if type = ARRAY_VAR
-    local function parseAndGetVar()
+    function parseAndGetVar()
         local name, type, index = parseVar()
         local value = getVar(name, type, index)
         return name, type, value, index
@@ -824,6 +835,7 @@ function interpit.interp(start_ast, state, incall, outcall)
 
         -- handle assignment of another vars value
         elseif currVal == SIMPLE_VAR or currVal == ARRAY_VAR then
+            local currType = currVal
             local name2, type2, value2, index2 = parseAndGetVar()
             setVar(name, type, value2, NUMLIT_VAL, index)
         end
