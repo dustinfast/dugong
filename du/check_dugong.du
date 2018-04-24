@@ -1,0 +1,174 @@
+#!./dugong.lua
+# check_dugong.du
+# Glenn G. Chappell
+# 16 Apr 2018
+#
+# For CS F331 / CSCE A331 Spring 2018
+# A Dugong Program to Run
+# Used in Assignment 7, Exercise A
+
+
+# printChar - Print a character, given its ASCII value.
+# Handles printable ASCII, codes 32-126.
+func printChar
+    if     ch ==  32  print " "
+    elseif ch ==  33  print "!"
+    elseif ch ==  34  print '"'
+    elseif ch ==  35  print "#"
+    elseif ch ==  36  print "$"
+    elseif ch ==  37  print "%"
+    elseif ch ==  38  print "&"
+    elseif ch ==  39  print "'"
+    elseif ch ==  40  print "("
+    elseif ch ==  41  print ")"
+    elseif ch ==  42  print "*"
+    elseif ch ==  43  print "+"
+    elseif ch ==  44  print ","
+    elseif ch ==  45  print "-"
+    elseif ch ==  46  print "."
+    elseif ch ==  47  print "/"
+    elseif ch ==  48  print "0"
+    elseif ch ==  49  print "1"
+    elseif ch ==  50  print "2"
+    elseif ch ==  51  print "3"
+    elseif ch ==  52  print "4"
+    elseif ch ==  53  print "5"
+    elseif ch ==  54  print "6"
+    elseif ch ==  55  print "7"
+    elseif ch ==  56  print "8"
+    elseif ch ==  57  print "9"
+    elseif ch ==  58  print ":"
+    elseif ch ==  59  print ";"
+    elseif ch ==  60  print "<"
+    elseif ch ==  61  print "="
+    elseif ch ==  62  print ">"
+    elseif ch ==  63  print "?"
+    elseif ch ==  64  print "@"
+    elseif ch ==  65  print "A"
+    elseif ch ==  66  print "B"
+    elseif ch ==  67  print "C"
+    elseif ch ==  68  print "D"
+    elseif ch ==  69  print "E"
+    elseif ch ==  70  print "F"
+    elseif ch ==  71  print "G"
+    elseif ch ==  72  print "H"
+    elseif ch ==  73  print "I"
+    elseif ch ==  74  print "J"
+    elseif ch ==  75  print "K"
+    elseif ch ==  76  print "L"
+    elseif ch ==  77  print "M"
+    elseif ch ==  78  print "N"
+    elseif ch ==  79  print "O"
+    elseif ch ==  80  print "P"
+    elseif ch ==  81  print "Q"
+    elseif ch ==  82  print "R"
+    elseif ch ==  83  print "S"
+    elseif ch ==  84  print "T"
+    elseif ch ==  85  print "U"
+    elseif ch ==  86  print "V"
+    elseif ch ==  87  print "W"
+    elseif ch ==  88  print "X"
+    elseif ch ==  89  print "Y"
+    elseif ch ==  90  print "Z"
+    elseif ch ==  91  print "["
+    elseif ch ==  92  print "\"
+    elseif ch ==  93  print "]"
+    elseif ch ==  94  print "^"
+    elseif ch ==  95  print "_"
+    elseif ch ==  96  print "`"
+    elseif ch ==  97  print "a"
+    elseif ch ==  98  print "b"
+    elseif ch ==  99  print "c"
+    elseif ch == 100  print "d"
+    elseif ch == 101  print "e"
+    elseif ch == 102  print "f"
+    elseif ch == 103  print "g"
+    elseif ch == 104  print "h"
+    elseif ch == 105  print "i"
+    elseif ch == 106  print "j"
+    elseif ch == 107  print "k"
+    elseif ch == 108  print "l"
+    elseif ch == 109  print "m"
+    elseif ch == 110  print "n"
+    elseif ch == 111  print "o"
+    elseif ch == 112  print "p"
+    elseif ch == 113  print "q"
+    elseif ch == 114  print "r"
+    elseif ch == 115  print "s"
+    elseif ch == 116  print "t"
+    elseif ch == 117  print "u"
+    elseif ch == 118  print "v"
+    elseif ch == 119  print "w"
+    elseif ch == 120  print "x"
+    elseif ch == 121  print "y"
+    elseif ch == 122  print "z"
+    elseif ch == 123  print "{"
+    elseif ch == 124  print "|"
+    elseif ch == 125  print "}"
+    elseif ch == 126  print "~"
+    else print "ERROR. printChar: bad value of ch: "; ch; cr
+    end
+end
+
+
+# initData - Initialize data arrays.
+func initData
+    arrlen = 40 # Length of arrays
+
+    a[0] =  294   a[1] =  316   a[2] =  431
+    a[3] =  44    a[4] =  796   a[5] =  454
+    a[6] =  648   a[7] =  829   a[8] =  117
+    a[9] =  347   a[10] = 870   a[11] = 696
+    a[12] = 928   a[13] = 330   a[14] = 796
+    a[15] = 102   a[16] = 829   a[17] = 398
+    a[18] = 752   a[19] = 88    a[20] = 882
+    a[21] = 60    a[22] = 658   a[23] = 537
+    a[24] = 471   a[25] = 260   a[26] = 295
+    a[27] = 411   a[28] = 422   a[29] = 436
+    a[30] = 517   a[31] = 654   a[32] = 639
+    a[33] = 776   a[34] = 59    a[35] = 108
+    a[36] = 209   a[37] = 409   a[38] = 361
+    a[39] = 474
+
+    d[0] =  466   d[1] =  294   d[2] =  447
+    d[3] =  864   d[4] =  211   d[5] =  211
+    d[6] =  503   d[7] =  385   d[8] =  886
+    d[9] =  909   d[10] = 362   d[11] = 108
+    d[12] = 932   d[13] = 911   d[14] = 439
+    d[15] = 932   d[16] = 182   d[17] = 360
+    d[18] = 960   d[19] = 766   d[20] = 791
+    d[21] = 8     d[22] = 787   d[23] = 207
+    d[24] = 459   d[25] = 140   d[26] = 326
+    d[27] = 110   d[28] = 255   d[29] = 671
+    d[30] = 79    d[31] = 397   d[32] = 367
+    d[33] = 668   d[34] = 769   d[35] = 522
+    d[36] = 45    e[37] = 601   d[38] = 132
+    d[39] = 640
+end
+
+
+# Initialize data & print header
+call initData
+print "Secret message #6:"; cr; cr
+
+# Print the secret message (in a mysterious manner)
+ii = 0
+while ii < arrlen
+    ch = (a[0] - d[0] + 2347) % 149
+    call printChar
+    jj = 0
+    while jj+1 < arrlen
+        a[jj] = a[jj] + a[jj+1]
+        d[jj] = d[jj] + d[jj+1]
+        jj = jj+1
+    end
+    ii = ii+1
+end
+print cr
+
+# Wait for user
+# (unnecessary with dugong.lua)
+#print cr
+#print "Press ENTER to quit "
+#input line
+
