@@ -5,10 +5,10 @@
 
 
 -- * To run a Dugong program, use dugong.lua (which uses this file). *
--- This module uses one (or more) coroutine(s) to parse a(n) abstract syntax tree(s)
+-- This module uses a coroutine to parse a given dugong absract syntax tree. 
 -- 
 
-local interpit = {}  -- Our module
+local interpit = {}  -- Module def
 
 
 -- ***** Variables *****
@@ -130,6 +130,7 @@ local function convertVal(type, value)
     end
 end
 
+
 -- convertToStr
 -- Given a variable, attemps to convert it to a string
 local function convertToStr(value)
@@ -148,6 +149,7 @@ local function convertToStr(value)
 
     return value
 end
+
 
 -- astToStr (G Chappell, 2018)
 -- Given an AST, produce a string holding the AST in (roughly) Lua form,
@@ -210,7 +212,7 @@ local function evalArith (lval, rval, op)
 end
 
 
------ Primary Function for Client Code -----
+---- Exported Function, interpit.interp ----
 --------------------------------------------
 
 -- interp
@@ -229,7 +231,6 @@ end
 --             - To output a newline, do outcall('\n')
 -- Returns: state, updated with new and/or updated variable values
 function interpit.interp(start_ast, state, incall, outcall)
-
 
     -- interp variables --
     ----------------------
@@ -250,7 +251,7 @@ function interpit.interp(start_ast, state, incall, outcall)
     -------------------------
 
     -- printDebug
-    -- prints debug info if in debug mode
+    -- prints debug info if in debug mode (set debug mode at line 237)
     local function printDebug(str)
         if debugmode then
             local key, val = nil
@@ -335,7 +336,6 @@ function interpit.interp(start_ast, state, incall, outcall)
                     subtreeDone[currAST] = false 
                     return 
                 end
-                
             end
 
         -- If node is empty or of an unexpected type:
@@ -855,8 +855,7 @@ function interpit.interp(start_ast, state, incall, outcall)
         local op = currVal          -- operator
         local result = false        -- final result (return value)
         
-
-        -- For both the l and r values:
+        -- Note: For both the l and r values:
         -- Next node == BIN_OP, UN_OP, NUMLIT_VAL, BOOLIT_VAL, SIMPLE_VAR, ARRAY_VAR.
         -- If BIN_OP or UN_OP, recursively call this func to process them.
         -- Else, the next value is an operand.
@@ -1046,10 +1045,9 @@ function interpit.interp(start_ast, state, incall, outcall)
         printDebug('END MAIN loop # '..temp..' Curr = '..currAST) -- debug 
     end
 
-    -- similiar to above but returns a result to tell doSTMT_LIST to advance or not
-    -- TODO: Combine w interpSTMT_LIST()
-    function interpCOND_STMT(ast, no_advance)
 
+    -- similiar to above but returns a result to tell doSTMT_LIST to advance or not
+    function interpCOND_STMT(ast, no_advance)
         -- increase ast parser count by 1 and init ast parser coroutine
         local baseASTCount = currAST -- note currAST count, for debug
         currAST = currAST + 1
