@@ -1,11 +1,7 @@
 #!./dugong.lua
-# check_dugong.du
+
 # Glenn G. Chappell
 # 16 Apr 2018
-#
-# For CS F331 / CSCE A331 Spring 2018
-# A Dugong Program to Run
-# Used in Assignment 7, Exercise A
 
 
 # printChar - Print a character, given its ASCII value.

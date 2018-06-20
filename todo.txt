@@ -1,6 +1,0 @@
-TODO
-
-slow scroll
-short curcuit && ops
-
-

@@ -1,9 +1,8 @@
--- lexit.lua
--- CSCE A3331, Assignment 3
+#!/usr/bin/env lua
+
+-- Lexical analyzer for Dugong files. Used by userlexer.lua.
 -- Dustin Fast
 -- Spring, 2018
--- Adapted from lexer.lua, Glenn G. Chappell 2018
-
 
 
 ----------------------

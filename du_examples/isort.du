@@ -1,10 +1,7 @@
 #!./dugong.lua
-# isort.du
+
 # Glenn G. Chappell
 # 16 Apr 2018
-#
-# For CS F331 / CSCE A331 Spring 2018
-# Dugong Example: Insertion Sort
 
 
 # All functions deal with array "data", whose length is given by

@@ -1,14 +1,15 @@
--- parseit.lua, A Recursive-Descent parser for "Dugong".
+#!/usr/bin/env lua
+
+-- A Recursive-Descent parser for "Dugong".
 -- Requires lexit.lua, a lexical analyzer for "Dugong".
--- CSCE A3331, Assignment 4
+
 -- Dustin Fast
 -- Spring, 2018
--- Adapted from rdparser4.lua, Glenn G. Chappell 2018
 
 
--------------
--- Grammar --
--------------
+--------------------
+-- Dugong Grammar --
+--------------------
 -- Note: Operators (+ - * /) are left-associative.
 -- Start Symbol = program
 -- (G1): program  ->  stmt_list
@@ -53,9 +54,9 @@
 -- *local SIMPLE_VAR  = 15
 -- *local ARRAY_VAR   = 16
 
------------------------
--- AST Specification --
------------------------
+------------------------------
+-- Dugong AST Specification --
+------------------------------
 -- - For an ID, the AST is { SIMPLE_VAR, SS }, where SS is the string
 --   form of the lexeme.
 -- - For a NUMLIT, the AST is { NUMLIT_VAL, SS }, where SS is the string

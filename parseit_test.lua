@@ -1,13 +1,10 @@
 #!/usr/bin/env lua
--- parseit_test.lua
--- VERSION 2
+
+-- Unit tests for parseit.lua
 -- Glenn G. Chappell
 -- 23 Feb 2018
 -- Updated 28 Feb 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Test Program for Module parseit
--- Used in Assignment 4, Exercise A
+
 
 parseit = require "parseit"  -- Import parseit module
 

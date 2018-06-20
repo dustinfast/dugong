@@ -1,9 +1,8 @@
 #!/usr/bin/env lua
--- dugong.lua
+
 -- Glenn G. Chappell
 -- 29 Mar 2018
 --
--- For CS F331 / CSCE A331 Spring 2018
 -- REPL/Shell for Dugong Programming Language
 -- Requires lexit.lua, parseit.lua, interpit.lua
 

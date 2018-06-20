@@ -1,5 +1,6 @@
--- lexit.lua
--- CSCE A3331, Assignment 6
+#!/usr/bin/env lua
+
+-- Interpreter for Dugong files. 
 -- Dustin Fast
 -- Spring, 2018
 
