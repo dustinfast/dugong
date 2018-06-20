@@ -1,11 +1,9 @@
 #!/usr/bin/env lua
--- lexit_test.lua
+
+-- Unit tests for lexit.lua
 -- Glenn G. Chappell
 -- 14 Feb 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Test Program for Module lexit
--- Used in Assignment 3, Exercise B
+
 
 lexit = require "lexit"  -- Import lexit module
 

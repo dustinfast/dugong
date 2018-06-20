@@ -1,11 +1,9 @@
 #!/usr/bin/env lua
--- uselexer.lua
+
+-- The bridge between the parser and interpreter.
 -- Glenn G. Chappell
 -- 6 Feb 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Simple Main Program for lexer Module
--- Requires lexit.lua
+
 
 lexer = require "lexit"
 

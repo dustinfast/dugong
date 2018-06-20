@@ -1,11 +1,9 @@
 #!/usr/bin/env lua
--- interpit_test.lua
+
+-- Unit tests for interpit.lua
 -- Glenn G. Chappell
 -- 3 Apr 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Test Program for Module interpit
--- Used in Assignment 6, Exercise B
+
 
 interpit = require "interpit"  -- Import interpit module
 

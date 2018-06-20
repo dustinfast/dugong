@@ -2,10 +2,7 @@
 -- useparseit.lua
 -- Glenn G. Chappell
 -- 23 Feb 2018
---
--- For CS F331 / CSCE A331 Spring 2018
--- Simple Main Program for parseit Module
--- Requires parseit.lua
+
 
 parseit = require "parseit"
 
