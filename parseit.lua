@@ -1,7 +1,8 @@
 #!/usr/bin/env lua
 
--- A Recursive-Descent parser for "Dugong".
--- Requires lexit.lua, a lexical analyzer for "Dugong".
+-- A Recursive-Descent parser for the Dugong programming language.
+-- Requires lexit.lua, a lexical analyzer for Dugong.
+-- The grammar and AST specificaton for Dugong was defined by Dr. Glenn G. Chappell.
 
 -- Dustin Fast
 -- Spring, 2018
@@ -37,22 +38,6 @@
 -- (G23):  	|  	lvalue
 -- (G24): lvalue  ->  ID [ '[' expr ']' ]
 
--- local STMT_LIST   = 1
--- *local INPUT_STMT  = 2
--- *local PRINT_STMT  = 3
--- *local FUNC_STMT   = 4
--- *local CALL_FUNC   = 5
--- *local IF_STMT     = 6
--- *local WHILE_STMT  = 7
--- *local ASSN_STMT   = 8
--- *local CR_OUT      = 9
--- *local STRLIT_OUT  = 10
--- *local BIN_OP      = 11
--- *local UN_OP       = 12
--- *local NUMLIT_VAL  = 13
--- *local BOOLLIT_VAL = 14
--- *local SIMPLE_VAR  = 15
--- *local ARRAY_VAR   = 16
 
 ------------------------------
 -- Dugong AST Specification --
@@ -127,7 +112,6 @@ local function doPreferOp()
         curr_lexcat == lexer.ID or
         curr_lexstr == ']' or
         curr_lexstr == ')' then
-        --print('calling lexer.prefer()')
         lexer.preferOp()
     end
 end
@@ -144,8 +128,6 @@ local function advance()
         curr_lexstr, curr_lexcat = "", 0
     end
 
-    -- print('Adv to: ' .. curr_lexstr)
-    
     -- Call lexit.preferOp() if it's appropriate
     doPreferOp()
 end
@@ -500,7 +482,6 @@ end
 -- (G11):  	|  	STRLIT
 -- (G12):  	|  	expr
 function parse_print_arg()
-    -- print('P: ' .. curr_lexstr .. ' in parse_print_arg()')
     -- 'cr'    
     if matchStr('cr') then
         return true, {CR_OUT}
@@ -522,7 +503,6 @@ end
 -- Parses rules:
 -- (G13): expr  ->  comp_expr { ( '&&' | '||' ): comp_expr }
 function parse_expr()
-    -- print('P: ' .. curr_lexstr .. ' in parse_expr()')
     return genparse_expr(parse_comp_expr, {'&&', '||'})
 end
 
@@ -530,7 +510,6 @@ end
 -- (G14): comp_expr  ->  '!' comp_expr
 -- (G15):  	|  	arith_expr { ( '==' | '!=' | '<' | '<=' | '>' | '>=' ): arith_expr }
 function parse_comp_expr()
-    -- print('P: ' .. curr_lexstr .. ' in parse_comp_expr()')
     local savelex = curr_lexstr
     if matchStr('!') then
         local pvalid, ast = parse_comp_expr()
@@ -545,14 +524,12 @@ end
 -- Parses rules:
 -- (G16): arith_expr  ->  term { ( '+' | '-' ): term }
 function parse_arith_expr()
-    -- print('P: ' .. curr_lexstr .. ' in parse_arith_expr()')    
     return genparse_expr(parse_term, {'+', '-'})
 end
 
 -- Parses rules:
 -- (G17): term  ->  factor { ( '*' | '/' | '%' ): factor }
 function parse_term()
-    -- print('P: ' .. curr_lexstr .. ' in parse_term()')    
     return genparse_expr(parse_factor, {'*' , '/' , '%'})
 end
 
@@ -564,7 +541,6 @@ end
 -- (G22):  	|  	NUMLIT
 -- (G23):  	|  	lvalue
 function parse_factor()
-    -- print('P: ' .. curr_lexstr .. ' in parse_factor()')    
     local pvalid, svalid, ast, savelex
     
     -- '(' expr '):'
@@ -617,7 +593,6 @@ end
 -- Parses rules:
 -- (G24): lvalue  ->  ID [ '[' expr ']' ]
 function parse_lvalue()
-    -- print('P: ' .. curr_lexstr .. ' in parse_lvalue()')        
     local savelex = curr_lexstr    
     if matchCat(lexer.ID) then
         local pvalid, svalid, ast = genparse_enclosed('[', parse_expr, ']')
