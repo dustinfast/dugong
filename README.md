@@ -17,10 +17,10 @@ For example:
 Alterntively, use `./dugong.lua` to start the interactive Dugong interpreter.
 
 **Windows Users:**  
-On windows, the `./` in the above Linux commands must be replaced with `lua`. For example:  
+To execute a Dugong program from source, use:  
+`lua dugong.lua DUGONG_SOURCEFILE`  
 
-`./dugong.lua dugong_examples/fibo.du`
-  
-Becomes
-
+For example:  
 `lua dugong.lua dugong_examples/fibo.du`
+
+Alterntively, use `lua dugong.lua` to start the interactive Dugong interpreter.
