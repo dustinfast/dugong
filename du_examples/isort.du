@@ -1,0 +1,106 @@
+#!./dugong.lua
+
+# Glenn G. Chappell
+# 16 Apr 2018
+
+
+# All functions deal with array "data", whose length is given by
+# variable "datalen". We assume datalen >= 0, and items in data have
+# indices 0 .. datalen-1.
+
+
+# Function initData
+# Pushes initial, unsorted values into array data (described above).
+func initData
+    # Function push
+    # Do a "push back" of value v in data. Increases datalen by 1.
+    func push
+        data[datalen] = v
+        datalen = datalen+1
+    end
+
+    v = 13   call push
+    v = 86   call push
+    v = -5   call push
+    v = 0    call push
+    v = 43   call push
+    v = 6    call push
+    v = 28   call push
+    v = 4    call push
+    v = 17   call push
+    v = 6    call push
+    v = 39   call push
+    v = -85  call push
+    v = 1    call push
+    v = 6    call push
+    v = 18   call push
+    v = 34   call push
+    v = 12   call push
+    v = 3    call push
+    v = 77   call push
+    v = 9    call push
+end
+
+
+# Function printData
+# Output items in array "data" (described above) on a single line, with
+# items separated by blanks, and the entire dataset followed by a
+# newline.
+func printData
+    i = 0
+    while i < datalen
+        if i > 0
+            print " "
+        end
+        print data[i]
+        i = i+1
+    end
+    print cr
+end
+
+
+# Function insertionSort
+# Sort array data (described above), in ascending order, using Insertion
+# Sort.
+func insertionSort
+    i = 1  # Index of item to insert among previous items
+    while i < datalen
+        savedata_i = data[i]  # Save item to insert
+        k = i                 # Spot we are looking at
+        done = false          # Have we found proper spot yet?
+        while k > 0 && !done
+            if !(savedata_i < data[k-1])
+                done = true   # Dugong has no "break", so we do this
+            else
+                data[k] = data[k-1]
+                k = k-1
+            end
+        end
+        # k is the spot where savedata_i goes; put it there
+        data[k] = savedata_i
+
+        i = i+1
+    end
+end
+
+
+# Main Program
+# Print unsorted data, sort it, and print result.
+
+# Make initial data
+call initData
+
+# Print initial data
+print "Initial data:"; cr
+call printData
+print cr
+
+# Sort
+print "Sorting"; cr
+call insertionSort
+print cr
+
+# Print sorted data
+print "Sorted data:"; cr
+call printData
+

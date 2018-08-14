@@ -1,9 +1,11 @@
 # Dugong
+
 A lexical analyzer, recursive descent parser, and interactive interpreter for the programming language Dugong.
 
 The grammar for Dugong is defined in `parseit.lua` and was defined by Dr. Glenn G. Chappel. Unit tests and the REPL/Shell (`dugong.lua`) also by Dr. Chappell.
 
 ## Usage
+
 **Dependecies:**  
 Requires Lua.
 
