@@ -9,20 +9,20 @@ The grammar for Dugong is defined in `parseit.lua` and was defined by Dr. Glenn 
 **Dependecies:**  
 Requires Lua.
 
-**Linux Users:**
-To execute a Dugong program from source, use:  
+**Linux Users:**  
+To execute a Dugong program from source:  
 `./dugong.lua DUGONG_SOURCEFILE`  
 
-For example:  
-`./dugong.lua dugong_examples/fibo.du`
+Ex: `./dugong.lua dugong_examples/fibo.du`
 
-Alterntively, use `./dugong.lua` to start the interactive Dugong interpreter.
+To start an interactive interpreter session:  
+`./dugong.lua`
 
 **Windows Users:**  
-To execute a Dugong program from source, use:  
+To execute a Dugong program from source:  
 `lua dugong.lua DUGONG_SOURCEFILE`  
 
-For example:  
-`lua dugong.lua dugong_examples/fibo.du`
+Ex: `lua dugong.lua dugong_examples/fibo.du`
 
-Alterntively, use `lua dugong.lua` to start the interactive Dugong interpreter.
+To start an interactive interpreter session:  
+`lua dugong.lua`
